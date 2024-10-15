@@ -48,6 +48,7 @@ import HydraSdk.Internal.Types.HostPort
 import HydraSdk.Internal.Types.Network
   ( Network(Testnet, Mainnet)
   , networkCodec
+  , networkToNetworkId
   ) as ExportNetwork
 
 import HydraSdk.Internal.Types.NodeApiMessage

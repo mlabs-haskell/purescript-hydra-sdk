@@ -14,10 +14,8 @@ import Contract.CborBytes (cborBytesToHex)
 import Control.Error.Util (bool)
 import Data.Array (concat, singleton) as Array
 import Data.Foldable (foldMap)
-import Data.Generic.Rep (class Generic)
 import Data.Int (decimal, toStringAs) as Int
 import Data.Maybe (Maybe(Nothing), isNothing)
-import Data.Show.Generic (genericShow)
 import Data.String (Pattern(Pattern))
 import Data.String (contains) as String
 import Data.Traversable (for_, traverse_)

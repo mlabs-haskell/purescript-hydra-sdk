@@ -1,10 +1,12 @@
 module HydraSdk.Internal.Types.Network
   ( Network(Testnet, Mainnet)
   , networkCodec
+  , networkToNetworkId
   ) where
 
 import Prelude
 
+import Cardano.Types (NetworkId(TestnetId, MainnetId))
 import Data.Codec.Argonaut (JsonCodec, int, object) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Codec.Argonaut.Variant (variantMatch) as CAV
@@ -44,3 +46,8 @@ networkCodec =
     { "testnet": Testnet
     , "mainnet": const Mainnet
     }
+
+networkToNetworkId :: Network -> NetworkId
+networkToNetworkId = case _ of
+  Testnet _ -> TestnetId
+  Mainnet -> MainnetId

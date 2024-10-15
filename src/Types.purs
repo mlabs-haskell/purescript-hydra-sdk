@@ -36,6 +36,7 @@ import HydraSdk.Internal.Types.HeadStatus
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
   , hostPortCodec
+  , hostPortOption
   , hostPortParser
   , printHost
   , printHostPort

@@ -1,6 +1,7 @@
 module HydraSdk.Internal.Types.HostPort
   ( HostPort
   , hostPortCodec
+  , hostPortOption
   , hostPortParser
   , printHost
   , printHostPort
@@ -14,6 +15,8 @@ import Data.Codec.Argonaut (JsonCodec, prismaticCodec, string) as CA
 import Data.Either (hush)
 import Data.Int (decimal, toStringAs) as Int
 import Data.Maybe (Maybe)
+import HydraSdk.Internal.Lib.Optparse (parserReader)
+import Options.Applicative (ReadM) as Optparse
 import Parsing (Parser, runParser)
 import URI (Host, Port)
 import URI.Host (parser, print) as Host
@@ -23,6 +26,9 @@ type HostPort = { host :: Host, port :: Port }
 
 hostPortCodec :: CA.JsonCodec HostPort
 hostPortCodec = CA.prismaticCodec "HostPort" readHostPort printHostPort CA.string
+
+hostPortOption :: Optparse.ReadM HostPort
+hostPortOption = parserReader "HostPort" hostPortParser
 
 printHost :: HostPort -> String
 printHost = Host.print <<< _.host

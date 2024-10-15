@@ -28,6 +28,7 @@
   , "node-child-process"
   , "node-path"
   , "node-streams"
+  , "optparse"
   , "ordered-collections"
   , "parsing"
   , "plutus-types"

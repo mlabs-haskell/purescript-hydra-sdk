@@ -33,7 +33,15 @@ import HydraSdk.Internal.Types.HeadStatus
   , isHeadClosed
   ) as ExportHeadStatus
 
-import HydraSdk.Internal.Types.HostPort (HostPort) as ExportHostPort
+import HydraSdk.Internal.Types.HostPort
+  ( HostPort
+  , hostPortCodec
+  , hostPortParser
+  , printHost
+  , printHostPort
+  , printPort
+  , readHostPort
+  ) as ExportHostPort
 
 import HydraSdk.Internal.Types.NodeApiMessage
   ( CommittedMessage

@@ -29,6 +29,7 @@
   , "node-path"
   , "node-streams"
   , "ordered-collections"
+  , "parsing"
   , "plutus-types"
   , "prelude"
   , "profunctor"

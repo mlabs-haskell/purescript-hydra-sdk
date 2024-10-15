@@ -1,4 +1,4 @@
-.PHONY: build, format
+.PHONY: build, format, repl
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
@@ -16,3 +16,6 @@ build: requires-nix-shell
 format: requires-nix-shell
 	@purs-tidy format-in-place ${ps-sources}
 	@nixpkgs-fmt ${nix-sources}
+
+repl: requires-nix-shell
+	spago repl

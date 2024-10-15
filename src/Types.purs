@@ -3,6 +3,7 @@ module HydraSdk.Types
   , module ExportHeadStatus
   , module ExportHostPort
   , module ExportHttpError
+  , module ExportNetwork
   , module ExportNodeApiMessage
   , module ExportSnapshot
   , module ExportTx
@@ -43,6 +44,11 @@ import HydraSdk.Internal.Types.HostPort
   , printPort
   , readHostPort
   ) as ExportHostPort
+
+import HydraSdk.Internal.Types.Network
+  ( Network(Testnet, Mainnet)
+  , networkCodec
+  ) as ExportNetwork
 
 import HydraSdk.Internal.Types.NodeApiMessage
   ( CommittedMessage

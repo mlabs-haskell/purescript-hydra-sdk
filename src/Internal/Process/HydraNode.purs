@@ -2,7 +2,6 @@ module HydraSdk.Internal.Process.HydraNode
   ( HydraHeadPeer
   , HydraNodeHandlers
   , HydraNodeStartupParams
-  , Network(Testnet, Mainnet)
   , noopHydraNodeHandlers
   , spawnHydraNode
   ) where
@@ -26,6 +25,7 @@ import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
 import HydraSdk.Internal.Types.HostPort (HostPort, printHost, printHostPort, printPort)
+import HydraSdk.Internal.Types.Network (Network(Testnet, Mainnet))
 import Node.ChildProcess (ChildProcess, defaultSpawnOptions, spawn, stderr, stdout)
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
@@ -51,13 +51,6 @@ type HydraHeadPeer =
   , hydraVerificationKey :: FilePath
   , cardanoVerificationKey :: FilePath
   }
-
-data Network = Testnet { magic :: Int } | Mainnet
-
-derive instance Generic Network _
-
-instance Show Network where
-  show = genericShow
 
 type HydraNodeHandlers =
   { apiServerStartedHandler :: Maybe (Effect Unit)

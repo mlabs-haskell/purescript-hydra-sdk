@@ -1,10 +1,8 @@
 module HydraSdk.Internal.Types.UtxoMap
   ( HydraUtxoMap(HydraUtxoMap)
-  , encodePlutusData
-  , encodeValue
   , fromUtxoMap
   , hydraUtxoMapCodec
-  , toUtxoMapWithoutRefScripts
+  , toUtxoMap
   ) where
 
 import Prelude
@@ -106,8 +104,8 @@ hydraUtxoMapCodec =
 fromUtxoMap :: UtxoMap -> HydraUtxoMap
 fromUtxoMap = wrap <<< Map.toUnfoldable
 
-toUtxoMapWithoutRefScripts :: HydraUtxoMap -> UtxoMap
-toUtxoMapWithoutRefScripts = Map.fromFoldable <<< unwrap
+toUtxoMap :: HydraUtxoMap -> UtxoMap
+toUtxoMap = Map.fromFoldable <<< unwrap
 
 --
 

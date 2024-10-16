@@ -89,4 +89,8 @@ import HydraSdk.Internal.Types.Snapshot (HydraSnapshot(HydraSnapshot)) as Export
 
 import HydraSdk.Internal.Types.Tx (HydraTx) as ExportTx
 
-import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap(HydraUtxoMap)) as ExportUtxoMap
+import HydraSdk.Internal.Types.UtxoMap
+  ( HydraUtxoMap(HydraUtxoMap)
+  , fromUtxoMap
+  , toUtxoMap
+  ) as ExportUtxoMap

@@ -45,8 +45,8 @@ type HydraNodeApiHandlers (m :: Type -> Type) =
 
 type HydraNodeApiWebSocketBuilder (m :: Type -> Type) =
   { url :: Url
-  , handlers :: HydraNodeApiHandlers m
   , runM :: m Unit -> Effect Unit
+  , handlers :: HydraNodeApiHandlers m
   , txRetryStrategies ::
       { close :: HydraTxRetryStrategy m
       , contest :: HydraTxRetryStrategy m

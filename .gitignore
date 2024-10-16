@@ -1,4 +1,5 @@
 /node_modules
 /output/
 /.psa-stash
+/.psci_modules/
 /.spago/

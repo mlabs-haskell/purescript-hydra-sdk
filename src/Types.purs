@@ -17,6 +17,7 @@ import HydraSdk.Internal.Http.Error
 
 import HydraSdk.Internal.Types.CommitRequest
   ( HydraCommitRequest(SimpleCommitRequest, FullCommitRequest)
+  , hydraFullCommitRequestCodec
   , mkFullCommitRequest
   , mkSimpleCommitRequest
   ) as ExportCommitRequest
@@ -31,7 +32,10 @@ import HydraSdk.Internal.Types.HeadStatus
       , HeadStatus_FanoutPossible
       , HeadStatus_Final
       )
+  , headStatusCodec
   , isHeadClosed
+  , printHeadStatus
+  , readHeadStatus
   ) as ExportHeadStatus
 
 import HydraSdk.Internal.Types.HostPort
@@ -83,14 +87,24 @@ import HydraSdk.Internal.Types.NodeApiMessage
   , NewTxMessage
   , PeerConnMessage
   , SnapshotConfirmedMessage
+  , hydraNodeApiInMessageCodec
+  , hydraNodeApiOutMessageCodec
   ) as ExportNodeApiMessage
 
-import HydraSdk.Internal.Types.Snapshot (HydraSnapshot(HydraSnapshot)) as ExportSnapshot
+import HydraSdk.Internal.Types.Snapshot
+  ( HydraSnapshot(HydraSnapshot)
+  , emptySnapshot
+  , hydraSnapshotCodec
+  ) as ExportSnapshot
 
-import HydraSdk.Internal.Types.Tx (HydraTx) as ExportTx
+import HydraSdk.Internal.Types.Tx
+  ( HydraTx
+  , hydraTxCodec
+  ) as ExportTx
 
 import HydraSdk.Internal.Types.UtxoMap
   ( HydraUtxoMap(HydraUtxoMap)
   , fromUtxoMap
+  , hydraUtxoMapCodec
   , toUtxoMap
   ) as ExportUtxoMap

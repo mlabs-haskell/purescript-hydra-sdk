@@ -30,8 +30,6 @@ module HydraSdk.Internal.Types.NodeApiMessage
   , NewTxMessage
   , PeerConnMessage
   , SnapshotConfirmedMessage
-  , committedMessageCodec
-  , headInitMessageCodec
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   ) where

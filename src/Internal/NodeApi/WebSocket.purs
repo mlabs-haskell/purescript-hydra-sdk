@@ -45,12 +45,19 @@ type HydraNodeApiHandlers (m :: Type -> Type) =
 
 type HydraNodeApiWebSocketBuilder (m :: Type -> Type) =
   { url :: Url
+  -- ^ Address of the hydra-node API WebSocket.
   , runM :: m Unit -> Effect Unit
+  -- ^ Since the handlers of the underlying raw WebSocket are executed in the
+  -- `Effect` monad, this function allows running client monad computations
+  -- within that context.
   , handlers :: HydraNodeApiHandlers m
+  -- ^ Handlers to attach to the established WebSocket connection. 
   , txRetryStrategies ::
       { close :: HydraTxRetryStrategy m
       , contest :: HydraTxRetryStrategy m
       }
+  -- ^ Retry strategies for transactions that may be silently dropped by the
+  -- cardano-node due to limitations of the hydra-node.
   }
 
 -- | Retry strategy to apply when submitting a Hydra transaction.
@@ -77,6 +84,9 @@ defaultCloseHeadSuccessPredicate
 defaultCloseHeadSuccessPredicate { queryHeadStatus } =
   (_ >= HeadStatus_Closed) <$> queryHeadStatus
 
+-- | Establishes a WebSocket connection to the hydra-node, attaches the provided
+-- | handlers, and returns a `HydraNodeApiWebSocket` handle with type-safe
+-- | actions for interacting with the hydra-node API.
 mkHydraNodeApiWebSocket
   :: forall (m :: Type -> Type)
    . MonadAff m

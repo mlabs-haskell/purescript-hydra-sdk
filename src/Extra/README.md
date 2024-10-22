@@ -1,9 +1,20 @@
 # AppManager
 
+The SDK is designed for Hydra applications, where Hydra Heads are
+operated by designated delegates. A delegate can be anyone who wants
+to participate as a provider of computational resources to host Hydra
+nodes. Delegates must form a group upfront to maintain Hydra
+consensus. Upon forming a group, all members need to specify
+information about their peers - such as Hydra node addresses, public
+keys, etc. That way there exists a strict correspondence between
+delegate configurations to start a functioning Hydra Head.
+
+Each application instance should monitor its underlying Hydra node and
+have access to information about other Hydra Head participants.
 AppManager is an opinionated interface for managing multiple app
-instances, with each instance running its own Hydra node. This
-interface is utilized in hydra-auction-offchain, enabling delegates to
-host multiple Layer-2 auctions at the same time.
+instances within a delegate group. This interface is utilized by 
+applications like `hydra-auction-offchain`, enabling delegates to host
+multiple Layer-2 auctions simultaneously.
 
 At the core of AppManager is the concept of slots. When delegates
 decide to form a group, they agree on the configurations for their
@@ -25,10 +36,11 @@ One clear drawback of this approach is the potential for malicious
 actors to reserve all available slots within a delegate group,
 effectively paralyzing its operations. In real-world applications, a
 flooding detection mechanism should be implemented to prevent this
-scenario, although there seem to be no obvious incentive for anyone to
-carry out such an attack.
+scenario, although there seems to be no obvious incentive for anyone
+to carry out such an attack.
 
-Despite its limitations, this approach does not require communication
-or synchronization between delegates, nor does it rely on a central
-server to orchestrate the initialization of Hydra Heads, making it a
-great fit for hydra-auction-offchain.
+Coming with the limitations mentioned, this approach simplifies things
+since it neither requires communication and synchronization between
+delegates during runtime nor does it rely on a central server to
+orchestrate the initialization of Hydra Heads, making it a great fit
+for hydra-auction-offchain and hopefully other Hydra applications.

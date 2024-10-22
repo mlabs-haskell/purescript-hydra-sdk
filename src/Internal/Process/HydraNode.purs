@@ -63,6 +63,16 @@ noopHydraNodeHandlers =
   , stderrHandler: Nothing
   }
 
+-- | Launches hydra-node as a subprocess using the specified configuration.
+-- |
+-- | If provided, stdout and stderr handlers will be attached.
+-- | Inspects the hydra-node stdout for the "APIServerStarted" message and
+-- | executes the provided callback if set. This callback is guaranteed to be
+-- | executed at most once. Typically, the "APIServerStarted" callback should be
+-- | used to determine when a connection to the hydra-node API WebSocket can be
+-- | established.
+-- |
+-- | NOTE: The hydra-node executable must be available in the PATH.
 spawnHydraNode
   :: forall m
    . MonadEffect m

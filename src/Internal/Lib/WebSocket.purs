@@ -22,7 +22,7 @@ import Ctl.Internal.JsWebSocket
   )
 import Ctl.Internal.JsWebSocket (Url) as ExportUrl
 import Data.Codec.Argonaut (JsonCodec, printJsonDecodeError) as CA
-import Data.Either (either)
+import Data.Either (Either(Left, Right))
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import HydraSdk.Internal.Lib.Codec (caDecodeString, caEncodeString)
@@ -31,7 +31,7 @@ foreign import _onWsClose :: JsWebSocket -> (Int -> String -> Effect Unit) -> Ef
 
 type WebSocket (m :: Type -> Type) (in_ :: Type) (out :: Type) =
   { onConnect :: m Unit -> Effect Unit
-  , onMessage :: (in_ -> m Unit) -> Effect Unit
+  , onMessage :: (Either String in_ -> m Unit) -> Effect Unit
   , onError :: (String -> m Unit) -> Effect Unit
   , onClose :: (Int -> String -> m Unit) -> Effect Unit
   , send :: out -> Effect Unit
@@ -62,11 +62,12 @@ mkWebSocket builder =
           _onWsMessage ws wsLogger \msgRaw ->
             builder.runM do
               logTrace' $ "onMessage raw: " <> msgRaw
-              either
-                (logTrace' <<< append "onMessage decode error: " <<< CA.printJsonDecodeError)
-                callback
-                (caDecodeString builder.inMsgCodec msgRaw)
-
+              case caDecodeString builder.inMsgCodec msgRaw of
+                Left decodeErr -> do
+                  logTrace' $ "onMessage decode error: " <> CA.printJsonDecodeError decodeErr
+                  callback $ Left msgRaw
+                Right msg ->
+                  callback $ Right msg
     , onError:
         \callback ->
           void $ _onWsError ws (builder.runM <<< callback)

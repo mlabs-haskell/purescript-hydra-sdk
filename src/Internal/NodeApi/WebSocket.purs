@@ -13,6 +13,7 @@ import Cardano.Types (Transaction)
 import Contract.Log (logInfo', logTrace')
 import Control.Monad.Logger.Class (class MonadLogger)
 import Control.Monad.Rec.Class (class MonadRec)
+import Data.Either (Either)
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
@@ -40,7 +41,9 @@ type HydraNodeApiWebSocket (m :: Type -> Type) =
 type HydraNodeApiHandlers (m :: Type -> Type) =
   { connectHandler :: HydraNodeApiWebSocket m -> m Unit
   , errorHandler :: HydraNodeApiWebSocket m -> String -> m Unit
-  , messageHandler :: HydraNodeApiWebSocket m -> HydraNodeApi_InMessage -> m Unit
+  , messageHandler :: HydraNodeApiWebSocket m -> Either String HydraNodeApi_InMessage -> m Unit
+  -- ^ Attempts to decode incoming messages to `HydraNodeApi_InMessage`.
+  -- On decoding failure, logs the error and passes the raw message instead.
   }
 
 type HydraNodeApiWebSocketBuilder (m :: Type -> Type) =

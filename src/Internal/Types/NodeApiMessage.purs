@@ -36,17 +36,23 @@ module HydraSdk.Internal.Types.NodeApiMessage
 
 import Prelude
 
-import Cardano.Types (ScriptHash)
-import Data.Codec.Argonaut (JsonCodec, int, object, string) as CA
+import Cardano.Types (Ed25519KeyHash, ScriptHash)
+import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
 import Data.Codec.Argonaut.Record (optional, record) as CAR
 import Data.Codec.Argonaut.Variant (variantMatch) as CAV
+import Data.DateTime (DateTime)
 import Data.Either (Either(Left, Right))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 import Data.Profunctor (dimap)
 import Data.Show.Generic (genericShow)
 import Data.Variant (inj, match) as Variant
-import HydraSdk.Internal.Lib.Codec (fixTaggedSumCodec, scriptHashCodec)
+import HydraSdk.Internal.Lib.Codec
+  ( dateTimeCodec
+  , ed25519KeyHashCodec
+  , fixTaggedSumCodec
+  , scriptHashCodec
+  )
 import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus, headStatusCodec)
 import HydraSdk.Internal.Types.Snapshot (HydraSnapshot, hydraSnapshotCodec)
 import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
@@ -136,86 +142,185 @@ hydraNodeApiInMessageCodec =
     , "HeadIsFinalized": In_HeadIsFinalized
     }
 
+----------------------------------------------------------------------
+-- PeerConnected / PeerDisconnected
+-- A message indicating a change in the connection status
+-- of a Head peer. 
+
 type PeerConnMessage =
   { peer :: String
+  , seq :: Int
+  , timestamp :: DateTime
   }
 
 peerConnMessageCodec :: CA.JsonCodec PeerConnMessage
 peerConnMessageCodec =
   CA.object "PeerConnMessage" $ CAR.record
     { peer: CA.string
+    , seq: CA.int
+    , timestamp: dateTimeCodec
     }
 
+----------------------------------------------------------------------
+-- Greetings
+-- A friendly welcome message which tells a client something about
+-- the node. Currently used for knowing what Party the server
+-- embodies. This message produced whenever the hydra-node starts and
+-- clients should take consequence of seeing this. For example, we can
+-- assume no peers connected when we see 'Greetings'.
+
 type GreetingsMessage =
-  { headStatus :: HydraHeadStatus
+  { me :: { vkey :: Ed25519KeyHash }
+  , headStatus :: HydraHeadStatus
+  , hydraHeadId :: Maybe ScriptHash
   , snapshotUtxo :: Maybe HydraUtxoMap
+  , timestamp :: DateTime
+  , hydraNodeVersion :: String
   }
 
 greetingsMessageCodec :: CA.JsonCodec GreetingsMessage
 greetingsMessageCodec =
   CA.object "GreetingsMessage" $ CAR.record
-    { headStatus: headStatusCodec
+    { me: CA.object "GreetingsMessage:vkey" $ CAR.record
+        { vkey: ed25519KeyHashCodec
+        }
+    , headStatus: headStatusCodec
     , snapshotUtxo: CAR.optional hydraUtxoMapCodec
+    , hydraHeadId: CAR.optional scriptHashCodec
+    , timestamp: dateTimeCodec
+    , hydraNodeVersion: CA.string
     }
+
+----------------------------------------------------------------------
+-- HeadIsInitializing
+-- An Init transaction has been observed onchain, with the given
+-- Head ID.
 
 type HeadInitMessage =
   { headId :: ScriptHash
+  , parties :: Array { vkey :: Ed25519KeyHash }
+  , seq :: Int
+  , timestamp :: DateTime
   }
 
 headInitMessageCodec :: CA.JsonCodec HeadInitMessage
 headInitMessageCodec =
   CA.object "HeadInitMessage" $ CAR.record
     { headId: scriptHashCodec
+    , parties: CA.array $ CA.object "HeadInitMessage:vkey" $ CAR.record
+        { vkey: ed25519KeyHashCodec
+        }
+    , seq: CA.int
+    , timestamp: dateTimeCodec
     }
 
+----------------------------------------------------------------------
+-- Committed
+-- A Commit transaction from a Head participant has been observed
+-- onchain.
+
 type CommittedMessage =
-  { utxo :: HydraUtxoMap
+  { party :: { vkey :: Ed25519KeyHash }
+  , utxo :: HydraUtxoMap
+  , seq :: Int
+  , timestamp :: DateTime
   }
 
 committedMessageCodec :: CA.JsonCodec CommittedMessage
 committedMessageCodec =
   CA.object "CommittedMessage" $ CAR.record
-    { utxo: hydraUtxoMapCodec
+    { party: CA.object "CommittedMessage:vkey" $ CAR.record
+        { vkey: ed25519KeyHashCodec
+        }
+    , utxo: hydraUtxoMapCodec
+    , seq: CA.int
+    , timestamp: dateTimeCodec
     }
 
+----------------------------------------------------------------------
+-- HeadIsOpen
+-- All parties have committed, and a successful CollectCom transaction
+-- was observed onchain.
+
 type HeadOpenMessage =
-  { utxo :: HydraUtxoMap
+  { headId :: ScriptHash
+  , utxo :: HydraUtxoMap
+  , seq :: Int
+  , timestamp :: DateTime
   }
 
 headOpenMessageCodec :: CA.JsonCodec HeadOpenMessage
 headOpenMessageCodec =
   CA.object "HeadOpenMessage" $ CAR.record
-    { utxo: hydraUtxoMapCodec
+    { headId: scriptHashCodec
+    , utxo: hydraUtxoMapCodec
+    , seq: CA.int
+    , timestamp: dateTimeCodec
     }
 
-type SnapshotConfirmedMessage =
-  { snapshot :: HydraSnapshot
-  }
-
-snapshotConfirmedMessageCodec :: CA.JsonCodec SnapshotConfirmedMessage
-snapshotConfirmedMessageCodec =
-  CA.object "SnapshotConfirmedMessage" $ CAR.record
-    { snapshot: hydraSnapshotCodec
-    }
+----------------------------------------------------------------------
+-- HeadIsClosed
+-- A Close transaction has been observed onchain, the head is now
+-- closed and the contestation phase begins.
 
 type HeadClosedMessage =
-  { snapshotNumber :: Int
+  { headId :: ScriptHash
+  , snapshotNumber :: Int
+  , contestationDeadline :: DateTime
+  , seq :: Int
+  , timestamp :: DateTime
   }
 
 headClosedMessageCodec :: CA.JsonCodec HeadClosedMessage
 headClosedMessageCodec =
   CA.object "HeadClosedMessage" $ CAR.record
-    { snapshotNumber: CA.int
+    { headId: scriptHashCodec
+    , snapshotNumber: CA.int
+    , contestationDeadline: dateTimeCodec
+    , seq: CA.int
+    , timestamp: dateTimeCodec
     }
 
+----------------------------------------------------------------------
+-- HeadIsFinalized
+-- The Head was already closed and the contestation period
+-- is now over.
+
 type HeadFinalizedMessage =
-  { utxo :: HydraUtxoMap
+  { headId :: ScriptHash
+  , utxo :: HydraUtxoMap
+  , seq :: Int
+  , timestamp :: DateTime
   }
 
 headFinalizedMessageCodec :: CA.JsonCodec HeadFinalizedMessage
 headFinalizedMessageCodec =
   CA.object "HeadFinalizedMessage" $ CAR.record
-    { utxo: hydraUtxoMapCodec
+    { headId: scriptHashCodec
+    , utxo: hydraUtxoMapCodec
+    , seq: CA.int
+    , timestamp: dateTimeCodec
+    }
+
+----------------------------------------------------------------------
+-- SnapshotConfirmed
+-- The given snapshot has been multi-signed by all Head participants
+-- and is now confirmed.
+
+type SnapshotConfirmedMessage =
+  { headId :: ScriptHash
+  , snapshot :: HydraSnapshot
+  , seq :: Int
+  , timestamp :: DateTime
+  }
+
+snapshotConfirmedMessageCodec :: CA.JsonCodec SnapshotConfirmedMessage
+snapshotConfirmedMessageCodec =
+  CA.object "SnapshotConfirmedMessage" $ CAR.record
+    { headId: scriptHashCodec
+    , snapshot: hydraSnapshotCodec
+    , seq: CA.int
+    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------

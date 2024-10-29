@@ -3,6 +3,8 @@ module HydraSdk.Internal.Lib.Codec
   , byteArrayCodec
   , caDecodeString
   , caEncodeString
+  , dateTimeCodec
+  , ed25519KeyHashCodec
   , fixTaggedSumCodec
   , fromCaJsonDecodeError
   , orefCodec
@@ -18,6 +20,7 @@ import Cardano.AsCbor (class AsCbor, decodeCbor, encodeCbor)
 import Cardano.Types
   ( Address
   , CborBytes(CborBytes)
+  , Ed25519KeyHash
   , ScriptHash
   , Transaction
   , TransactionInput(TransactionInput)
@@ -43,8 +46,10 @@ import Data.Codec.Argonaut
   , prismaticCodec
   , string
   ) as CA
-import Data.Either (Either)
-import Data.Maybe (Maybe(Just, Nothing))
+import Data.DateTime (DateTime)
+import Data.Either (Either, hush)
+import Data.Formatter.DateTime (formatDateTime, unformatDateTime)
+import Data.Maybe (Maybe(Just, Nothing), fromJust)
 import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
 import Data.String (Pattern(Pattern))
@@ -52,6 +57,7 @@ import Data.String (split) as String
 import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
 import Foreign.Object (delete, fromHomogeneous, lookup, member, size, union) as Obj
+import Partial.Unsafe (unsafePartial)
 
 fixTaggedSumCodec :: forall a. CA.JsonCodec a -> CA.JsonCodec a
 fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
@@ -114,6 +120,20 @@ byteArrayCodec =
 
 cborBytesCodec :: CA.JsonCodec CborBytes
 cborBytesCodec = wrapIso CborBytes byteArrayCodec
+
+dateTimeCodec :: CA.JsonCodec DateTime
+dateTimeCodec =
+  CA.prismaticCodec
+    "DateTime"
+    (hush <<< unformatDateTime formatter)
+    (unsafePartial fromJust <<< hush <<< formatDateTime formatter)
+    CA.string
+  where
+  formatter :: String
+  formatter = "YYYY-MM-DDTHH:mm:ssZ"
+
+ed25519KeyHashCodec :: CA.JsonCodec Ed25519KeyHash
+ed25519KeyHashCodec = asCborCodec "Ed25519KeyHash"
 
 orefCodec :: CA.JsonCodec TransactionInput
 orefCodec =

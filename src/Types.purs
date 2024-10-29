@@ -1,5 +1,6 @@
 module HydraSdk.Types
-  ( module ExportCommitRequest
+  ( module ExportArgonautJson
+  , module ExportCommitRequest
   , module ExportHeadStatus
   , module ExportHostPort
   , module ExportHttpError
@@ -14,6 +15,11 @@ import HydraSdk.Internal.Http.Error
   ( AffjaxError(AffjaxError)
   , HttpError(DecodeJsonError, HttpRequestError, HttpResponseError)
   ) as ExportHttpError
+
+import HydraSdk.Internal.Types.ArgonautJson
+  ( ArgonautJson(ArgonautJson)
+  , argonautJsonCodec
+  ) as ExportArgonautJson
 
 import HydraSdk.Internal.Types.CommitRequest
   ( HydraCommitRequest(SimpleCommitRequest, FullCommitRequest)
@@ -58,35 +64,44 @@ import HydraSdk.Internal.Types.Network
 import HydraSdk.Internal.Types.NodeApiMessage
   ( CommittedMessage
   , GreetingsMessage
+  , HeadAbortedMessage
   , HeadClosedMessage
+  , HeadContestedMessage
   , HeadInitMessage
   , HeadFinalizedMessage
   , HeadOpenMessage
   , HydraNodeApi_InMessage
-      ( In_Greetings
-      , In_PeerConnected
-      , In_PeerDisconnected
-      , In_HeadIsInitializing
-      , In_Committed
-      , In_HeadIsAborted
-      , In_HeadIsOpen
-      , In_SnapshotConfirmed
-      , In_TxInvalid
-      , In_HeadIsClosed
-      , In_ReadyToFanout
-      , In_HeadIsFinalized
+      ( Greetings
+      , PeerConnected
+      , PeerDisconnected
+      , PeerHandshakeFailure
+      , HeadIsInitializing
+      , Committed
+      , HeadIsOpen
+      , HeadIsClosed
+      , HeadIsContested
+      , ReadyToFanout
+      , HeadIsAborted
+      , HeadIsFinalized
+      , SnapshotConfirmed
+      , TxInvalid
+      , TxValid
       )
   , HydraNodeApi_OutMessage
-      ( Out_Init
-      , Out_Abort
-      , Out_NewTx
-      , Out_Close
-      , Out_Contest
-      , Out_Fanout
+      ( Init
+      , Abort
+      , NewTx
+      , Close
+      , Contest
+      , Fanout
       )
   , NewTxMessage
   , PeerConnMessage
+  , PeerHandshakeFailureMessage
+  , ReadyToFanoutMessage
   , SnapshotConfirmedMessage
+  , TxInvalidMessage
+  , TxValidMessage
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   ) as ExportNodeApiMessage

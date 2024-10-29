@@ -22,7 +22,7 @@ import HydraSdk.Internal.Lib.WebSocket (Url, WebSocket, mkWebSocket)
 import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed))
 import HydraSdk.Internal.Types.NodeApiMessage
   ( HydraNodeApi_InMessage
-  , HydraNodeApi_OutMessage(Out_Init, Out_Abort, Out_NewTx, Out_Close, Out_Contest, Out_Fanout)
+  , HydraNodeApi_OutMessage(Init, Abort, NewTx, Close, Contest, Fanout)
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   )
@@ -108,17 +108,17 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
     hydraNodeApiWs :: HydraNodeApiWebSocket m
     hydraNodeApiWs =
       { baseWs: ws
-      , initHead: ws.send Out_Init
-      , abortHead: ws.send Out_Abort
-      , submitTxL2: ws.send <<< Out_NewTx <<< { transaction: _ } <<< mkHydraTx
+      , initHead: ws.send Init
+      , abortHead: ws.send Abort
+      , submitTxL2: ws.send <<< NewTx <<< { transaction: _ } <<< mkHydraTx
       , closeHead:
           case txRetryStrategies.close of
             DontRetryTx ->
-              ws.send Out_Close
+              ws.send Close
             RetryTxWithParams retryParams ->
               runM $ retry
                 { actionName: "CloseHead"
-                , action: liftEffect $ ws.send Out_Close
+                , action: liftEffect $ ws.send Close
                 , delaySec: retryParams.delaySec
                 , maxRetries: retryParams.maxRetries
                 , successPredicate: const retryParams.successPredicate
@@ -127,17 +127,17 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
       , challengeSnapshot:
           case txRetryStrategies.contest of
             DontRetryTx ->
-              ws.send Out_Contest
+              ws.send Contest
             RetryTxWithParams retryParams ->
               runM $ retry
                 { actionName: "ChallengeSnapshot"
-                , action: liftEffect $ ws.send Out_Contest
+                , action: liftEffect $ ws.send Contest
                 , delaySec: retryParams.delaySec
                 , maxRetries: retryParams.maxRetries
                 , successPredicate: const retryParams.successPredicate
                 , failHandler: const retryParams.failHandler
                 }
-      , fanout: ws.send Out_Fanout
+      , fanout: ws.send Fanout
       }
   ws.onConnect do
     logInfo' $ "Connected to hydra-node WebSocket server (" <> url <> ")."

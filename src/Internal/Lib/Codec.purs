@@ -1,5 +1,7 @@
 module HydraSdk.Internal.Lib.Codec
-  ( addressCodec
+  ( class FromVariantGeneric
+  , class ToVariantGeneric
+  , addressCodec
   , byteArrayCodec
   , caDecodeString
   , caEncodeString
@@ -7,10 +9,13 @@ module HydraSdk.Internal.Lib.Codec
   , ed25519KeyHashCodec
   , fixTaggedSumCodec
   , fromCaJsonDecodeError
+  , fromVariantGeneric
   , orefCodec
   , printOref
   , readOref
   , scriptHashCodec
+  , sumGenericCodec
+  , toVariantGeneric
   , txCodec
   ) where
 
@@ -27,6 +32,7 @@ import Cardano.Types
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
 import Contract.CborBytes (cborBytesToHex, hexToCborBytes)
+import Control.Alt ((<|>))
 import Data.Argonaut (Json)
 import Data.Argonaut
   ( JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
@@ -49,15 +55,29 @@ import Data.Codec.Argonaut
 import Data.DateTime (DateTime)
 import Data.Either (Either, hush)
 import Data.Formatter.DateTime (formatDateTime, unformatDateTime)
+import Data.Generic.Rep
+  ( Argument(Argument)
+  , Constructor(Constructor)
+  , NoArguments(NoArguments)
+  , Sum(Inl, Inr)
+  , from
+  , to
+  ) as Generic
+import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Just, Nothing), fromJust)
 import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
 import Data.String (Pattern(Pattern))
 import Data.String (split) as String
+import Data.Symbol (class IsSymbol)
 import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
+import Data.Variant (Variant)
+import Data.Variant (inj, prj) as Variant
 import Foreign.Object (delete, fromHomogeneous, lookup, member, size, union) as Obj
 import Partial.Unsafe (unsafePartial)
+import Prim.Row (class Cons) as Row
+import Type.Proxy (Proxy(Proxy))
 
 fixTaggedSumCodec :: forall a. CA.JsonCodec a -> CA.JsonCodec a
 fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
@@ -85,6 +105,77 @@ fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
             valueJson # A.caseJsonObject json \valueObj ->
               A.fromObject $ Obj.union valueObj $ Obj.delete "value" obj
           _, _ -> json
+
+sumGenericCodec
+  :: forall a rep row
+   . Generic a rep
+  => ToVariantGeneric rep row
+  => FromVariantGeneric row rep
+  => String
+  -> CA.JsonCodec (Variant row)
+  -> CA.JsonCodec a
+sumGenericCodec typeName variantCodec =
+  CA.prismaticCodec typeName (map Generic.to <<< fromVariantGeneric)
+    (toVariantGeneric <<< Generic.from)
+    variantCodec
+
+class FromVariantGeneric row rep where
+  fromVariantGeneric :: Variant row -> Maybe rep
+
+instance
+  ( FromVariantGeneric unionRow aRep
+  , FromVariantGeneric unionRow bRep
+  ) =>
+  FromVariantGeneric unionRow (Generic.Sum aRep bRep) where
+  fromVariantGeneric variant =
+    (Generic.Inl <$> fromVariantGeneric variant)
+      <|> (Generic.Inr <$> fromVariantGeneric variant)
+
+else instance
+  ( Row.Cons constrName Unit rowRest rowFull
+  , IsSymbol constrName
+  ) =>
+  FromVariantGeneric rowFull (Generic.Constructor constrName Generic.NoArguments) where
+  fromVariantGeneric variant =
+    Variant.prj (Proxy :: _ constrName) variant <#> \_ ->
+      Generic.Constructor Generic.NoArguments
+
+else instance
+  ( Row.Cons constrName value rowRest rowFull
+  , IsSymbol constrName
+  ) =>
+  FromVariantGeneric rowFull (Generic.Constructor constrName (Generic.Argument value)) where
+  fromVariantGeneric variant =
+    Variant.prj (Proxy :: _ constrName) variant <#>
+      Generic.Constructor <<< Generic.Argument
+
+class ToVariantGeneric rep row where
+  toVariantGeneric :: rep -> Variant row
+
+instance
+  ( Row.Cons constrName value rowRest rowFull
+  , IsSymbol constrName
+  ) =>
+  ToVariantGeneric (Generic.Constructor constrName (Generic.Argument value)) rowFull where
+  toVariantGeneric (Generic.Constructor (Generic.Argument x)) =
+    Variant.inj (Proxy :: _ constrName) x
+
+instance
+  ( Row.Cons constrName Unit rowRest rowFull
+  , IsSymbol constrName
+  ) =>
+  ToVariantGeneric (Generic.Constructor constrName Generic.NoArguments) rowFull where
+  toVariantGeneric _ =
+    Variant.inj (Proxy :: _ constrName) unit
+
+instance
+  ( ToVariantGeneric aRep unionRow
+  , ToVariantGeneric bRep unionRow
+  ) =>
+  ToVariantGeneric (Generic.Sum aRep bRep) unionRow where
+  toVariantGeneric = case _ of
+    Generic.Inl x -> toVariantGeneric x
+    Generic.Inr x -> toVariantGeneric x
 
 fromCaJsonDecodeError :: CA.JsonDecodeError -> A.JsonDecodeError
 fromCaJsonDecodeError = case _ of

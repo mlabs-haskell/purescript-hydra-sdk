@@ -16,6 +16,7 @@
 
   outputs = { self, nixpkgs, ctl, hydra, hydra-auction-onchain, ... }@inputs:
     let
+      projectName = "purescript-hydra-sdk";
       supportedSystems = [ "x86_64-linux" ];
       perSystem = nixpkgs.lib.genAttrs supportedSystems;
 
@@ -33,8 +34,7 @@
 
       psProjectFor = system: pkgs:
         pkgs.purescriptProject rec {
-          inherit pkgs;
-          projectName = "hydra-auction-offchain";
+          inherit pkgs projectName;
           src = builtins.path {
             path = ./.;
             name = "${projectName}-src";
@@ -64,6 +64,18 @@
         in
         {
           default = (psProjectFor system pkgs).devShell;
+        }
+      );
+
+      packages = perSystem (system:
+        let
+          pkgs = nixpkgsFor system;
+          project = psProjectFor system pkgs;
+        in
+        {
+          docs = project.buildPursDocs {
+            packageName = projectName;
+          };
         }
       );
 

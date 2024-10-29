@@ -12,6 +12,7 @@ applications.
 
 - [Applications](#applications)
 - [Functionality](#functionality)
+- [Development Workflows](#development-workflows)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -43,3 +44,12 @@ library.
 multiple Hydra application instances, with each instance running a separate
 hydra-node process, as implemented in [hydra-auction-offchain](https://github.com/mlabs-haskell/hydra-auction-offchain).
 For more information, refer to the [AppManager README](src/Extra/README.md).
+
+### Development Workflows
+
+Before executing most of the commands listed below, first enter the Nix
+development shell by running `nix develop`.
+
+**Build the project** (requires Nix shell): `make build`  
+**Format code** (requires Nix shell): `make format`  
+**Build docs and open them in the browser**: `make docs`

@@ -1,8 +1,15 @@
-.PHONY: build, format, repl
+.PHONY: build, format, repl, docs
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
 purs-args := "--stash --censor-lib --censor-codes=ImplicitImport,ImplicitQualifiedImport,ImplicitQualifiedImportReExport,UserDefinedWarning"
+
+system := $(shell uname -s)
+ifeq (${system},Linux)
+    open-in-browser := xdg-open
+else
+    open-in-browser := open
+endif
 
 requires-nix-shell:
 	@[ "$(IN_NIX_SHELL)" ] || \
@@ -20,3 +27,7 @@ format: requires-nix-shell
 
 repl: requires-nix-shell
 	spago repl
+
+docs:
+	nix build .#docs
+	${open-in-browser} result/generated-docs/html/index.html

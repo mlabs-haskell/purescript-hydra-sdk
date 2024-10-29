@@ -122,12 +122,12 @@ hydraNodeApiInMessageCodec =
 
 ----------------------------------------------------------------------
 -- 0. Greetings
--- A friendly welcome message which tells a client something about
--- the node. Currently used for knowing what Party the server
--- embodies. This message produced whenever the hydra-node starts and
--- clients should take consequence of seeing this. For example, we can
--- assume no peers connected when we see 'Greetings'.
 
+-- | A friendly welcome message which tells a client something about
+-- | the node. Currently used for knowing what Party the server
+-- | embodies. This message produced whenever the hydra-node starts
+-- | and clients should take consequence of seeing this. For example,
+-- | we can assume no peers connected when we see 'Greetings'.
 type GreetingsMessage =
   { me :: { vkey :: Ed25519KeyHash }
   , headStatus :: HydraHeadStatus
@@ -152,9 +152,9 @@ greetingsMessageCodec =
 
 ----------------------------------------------------------------------
 -- 1. PeerConnected / 2. PeerDisconnected
--- A message indicating a change in the connection status
--- of a Head peer. 
 
+-- | A message indicating a change in the connection status
+-- | of a Head peer. 
 type PeerConnMessage =
   { peer :: String
   , seq :: Int
@@ -171,8 +171,8 @@ peerConnMessageCodec =
 
 ----------------------------------------------------------------------
 -- 3. PeerHandshakeFailure
--- A peer has failed to negotiate a protocol.
 
+-- | A peer has failed to negotiate a protocol.
 -- TODO: remoteHost: there appears to be a discrepancy between API
 -- docs and the actual implementation
 type PeerHandshakeFailureMessage =
@@ -195,9 +195,9 @@ peerHandshakeFailureMessageCodec =
 
 ----------------------------------------------------------------------
 -- 4. HeadIsInitializing
--- An Init transaction has been observed onchain, with the given
--- Head ID.
 
+-- | An Init transaction has been observed onchain, with the given
+-- | Head ID.
 type HeadInitMessage =
   { headId :: ScriptHash
   , parties :: Array { vkey :: Ed25519KeyHash }
@@ -219,9 +219,9 @@ headInitMessageCodec =
 
 ----------------------------------------------------------------------
 -- 5. Committed
--- A Commit transaction from a Head participant has been observed
--- onchain.
 
+-- | A Commit transaction from a Head participant has been observed
+-- | onchain.
 type CommittedMessage =
   { party :: { vkey :: Ed25519KeyHash }
   , utxo :: HydraUtxoMap
@@ -243,9 +243,9 @@ committedMessageCodec =
 
 ----------------------------------------------------------------------
 -- 6. HeadIsOpen
--- All parties have committed, and a successful CollectCom transaction
--- was observed onchain.
 
+-- | All parties have committed, and a successful CollectCom transaction
+-- | was observed onchain.
 type HeadOpenMessage =
   { headId :: ScriptHash
   , utxo :: HydraUtxoMap
@@ -264,9 +264,9 @@ headOpenMessageCodec =
 
 ----------------------------------------------------------------------
 -- 7. HeadIsClosed
--- A Close transaction has been observed onchain, the head is now
--- closed and the contestation phase begins.
 
+-- | A Close transaction has been observed onchain, the head is now
+-- | closed and the contestation phase begins.
 type HeadClosedMessage =
   { headId :: ScriptHash
   , snapshotNumber :: Int
@@ -287,11 +287,11 @@ headClosedMessageCodec =
 
 ----------------------------------------------------------------------
 -- 8. HeadIsContested
--- A Contest transaction has been observed onchain, meaning that
--- the Head state has been successfully contested and the returned
--- snapshot number is now the latest accepted snapshot. The
--- contestation phase was extended to the specified deadline.
 
+-- | A Contest transaction has been observed onchain, meaning that
+-- | the Head state has been successfully contested and the returned
+-- | snapshot number is now the latest accepted snapshot. The
+-- | contestation phase was extended to the specified deadline.
 type HeadContestedMessage =
   { headId :: ScriptHash
   , snapshotNumber :: Int
@@ -312,9 +312,9 @@ headContestedMessageCodec =
 
 ----------------------------------------------------------------------
 -- 9. ReadyToFanout
--- The contestation period has passed and the Head can now be
--- finalized by a Fanout transaction.
 
+-- | The contestation period has passed and the Head can now be
+-- | finalized by a Fanout transaction.
 type ReadyToFanoutMessage =
   { headId :: ScriptHash
   , seq :: Int
@@ -331,9 +331,9 @@ readyToFanoutMessageCodec =
 
 ----------------------------------------------------------------------
 -- 10. HeadIsAborted
--- One of the participants did Abort the Head before all commits were
--- done or collected.
 
+-- | One of the participants did Abort the Head before all commits
+-- | were done or collected.
 type HeadAbortedMessage =
   { headId :: ScriptHash
   , utxo :: HydraUtxoMap
@@ -352,9 +352,9 @@ headAbortedMessageCodec =
 
 ----------------------------------------------------------------------
 -- 11. HeadIsFinalized
--- The Head was already closed and the contestation period
--- is now over.
 
+-- | The Head was already closed and the contestation period
+-- | is now over.
 type HeadFinalizedMessage =
   { headId :: ScriptHash
   , utxo :: HydraUtxoMap
@@ -373,10 +373,10 @@ headFinalizedMessageCodec =
 
 ----------------------------------------------------------------------
 -- 12. TxValid
--- Observed a valid transaction inside the Head. Note that a node
--- observes its own transactions and it may still happen that this
--- transaction is not included in a snapshot.
 
+-- | Observed a valid transaction inside the Head. Note that a node
+-- | observes its own transactions and it may still happen that this
+-- | transaction is not included in a snapshot.
 type TxValidMessage =
   { headId :: ScriptHash
   , transaction :: HydraTx
@@ -395,13 +395,13 @@ txValidMessageCodec =
 
 ----------------------------------------------------------------------
 -- 13. TxInvalid
--- Observed an invalid transaction inside the head. Either it is not
--- yet valid (because some other transactions need to be seen first),
--- or it is no longer valid (because of conflicting transactions
--- observed in-between). The included validation error should give an
--- indication why it was not applicable to the given UTxO
--- (the local, seen ledger state).
 
+-- | Observed an invalid transaction inside the head. Either it is not
+-- | yet valid (because some other transactions need to be seen first),
+-- | or it is no longer valid (because of conflicting transactions
+-- | observed in-between). The included validation error should give
+-- | an indication why it was not applicable to the given UTxO
+-- | (the local, seen ledger state).
 type TxInvalidMessage =
   { headId :: ScriptHash
   , utxo :: HydraUtxoMap
@@ -427,9 +427,9 @@ txInvalidMessageCodec =
 
 ----------------------------------------------------------------------
 -- 14. SnapshotConfirmed
--- The given snapshot has been multi-signed by all Head participants
--- and is now confirmed.
 
+-- | The given snapshot has been multi-signed by all Head participants
+-- | and is now confirmed.
 type SnapshotConfirmedMessage =
   { headId :: ScriptHash
   , snapshot :: HydraSnapshot
@@ -448,10 +448,10 @@ snapshotConfirmedMessageCodec =
 
 ----------------------------------------------------------------------
 -- 15. InvalidInput
--- Emitted by the server when it has failed to parse some client
--- input. It returns the malformed input as well as some hint about
--- what went wrong.
 
+-- | Emitted by the server when it has failed to parse some client
+-- | input. It returns the malformed input as well as some hint about
+-- | what went wrong.
 type InvalidInputMessage =
   { reason :: String
   , input :: String

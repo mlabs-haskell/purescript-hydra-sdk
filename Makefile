@@ -16,6 +16,7 @@ build: requires-nix-shell
 format: requires-nix-shell
 	@purs-tidy format-in-place ${ps-sources}
 	@nixpkgs-fmt ${nix-sources}
+	doctoc README.md --github --notitle
 
 repl: requires-nix-shell
 	spago repl

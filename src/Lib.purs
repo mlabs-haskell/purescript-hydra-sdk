@@ -17,6 +17,7 @@ import HydraSdk.Internal.Lib.Codec
   , fixTaggedSumCodec
   , fromCaJsonDecodeError
   , fromVariantGeneric
+  , logLevelCodec
   , orefCodec
   , printOref
   , readOref

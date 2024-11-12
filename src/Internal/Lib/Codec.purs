@@ -13,6 +13,7 @@ module HydraSdk.Internal.Lib.Codec
   , fixTaggedSumCodec
   , fromCaJsonDecodeError
   , fromVariantGeneric
+  , logLevelCodec
   , orefCodec
   , printOref
   , readOref
@@ -70,6 +71,7 @@ import Data.Generic.Rep
   , to
   ) as Generic
 import Data.Generic.Rep (class Generic)
+import Data.Log.Level (LogLevel(Trace, Debug, Info, Warn, Error))
 import Data.Maybe (Maybe(Just, Nothing), fromJust)
 import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
@@ -243,6 +245,28 @@ dateTimeCodec =
 
 ed25519KeyHashCodec :: CA.JsonCodec Ed25519KeyHash
 ed25519KeyHashCodec = asCborCodec "Ed25519KeyHash"
+
+logLevelCodec :: CA.JsonCodec LogLevel
+logLevelCodec =
+  CA.prismaticCodec "LogLevel" readLogLevel printLogLevel
+    CA.string
+  where
+  readLogLevel :: String -> Maybe LogLevel
+  readLogLevel = case _ of
+    "trace" -> Just Trace
+    "debug" -> Just Debug
+    "info" -> Just Info
+    "warn" -> Just Warn
+    "error" -> Just Error
+    _ -> Nothing
+
+  printLogLevel :: LogLevel -> String
+  printLogLevel = case _ of
+    Trace -> "trace"
+    Debug -> "debug"
+    Info -> "info"
+    Warn -> "warn"
+    Error -> "error"
 
 orefCodec :: CA.JsonCodec TransactionInput
 orefCodec =

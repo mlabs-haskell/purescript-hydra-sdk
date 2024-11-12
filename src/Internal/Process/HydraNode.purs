@@ -2,6 +2,8 @@ module HydraSdk.Internal.Process.HydraNode
   ( HydraHeadPeer
   , HydraNodeHandlers
   , HydraNodeStartupParams
+  , hydraHeadPeerCodec
+  , hydraNodeStartupParamsCodec
   , noopHydraNodeHandlers
   , spawnHydraNode
   ) where
@@ -13,6 +15,8 @@ import Cardano.Types (TransactionHash)
 import Contract.CborBytes (cborBytesToHex)
 import Control.Error.Util (bool)
 import Data.Array (concat, singleton) as Array
+import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
+import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Foldable (foldMap)
 import Data.Int (decimal, toStringAs) as Int
 import Data.Maybe (Maybe(Nothing), isNothing)
@@ -22,8 +26,15 @@ import Data.Traversable (for_, traverse_)
 import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
-import HydraSdk.Internal.Types.HostPort (HostPort, printHost, printHostPort, printPort)
-import HydraSdk.Internal.Types.Network (Network(Testnet, Mainnet))
+import HydraSdk.Internal.Lib.Codec (txHashCodec)
+import HydraSdk.Internal.Types.HostPort
+  ( HostPort
+  , hostPortCodec
+  , printHost
+  , printHostPort
+  , printPort
+  )
+import HydraSdk.Internal.Types.Network (Network(Testnet, Mainnet), networkCodec)
 import Node.ChildProcess (ChildProcess, defaultSpawnOptions, spawn, stderr, stdout)
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
@@ -44,11 +55,36 @@ type HydraNodeStartupParams =
   , peers :: Array HydraHeadPeer
   }
 
+hydraNodeStartupParamsCodec :: CA.JsonCodec HydraNodeStartupParams
+hydraNodeStartupParamsCodec =
+  CA.object "HydraNodeStartupParams" $ CAR.record
+    { nodeId: CA.string
+    , hydraNodeAddress: hostPortCodec
+    , hydraNodeApiAddress: hostPortCodec
+    , persistDir: CA.string
+    , hydraSigningKey: CA.string
+    , cardanoSigningKey: CA.string
+    , network: networkCodec
+    , nodeSocket: CA.string
+    , pparams: CA.string
+    , hydraScriptsTxHash: txHashCodec
+    , contestPeriodSec: CA.int
+    , peers: CA.array hydraHeadPeerCodec
+    }
+
 type HydraHeadPeer =
   { hydraNodeAddress :: HostPort
   , hydraVerificationKey :: FilePath
   , cardanoVerificationKey :: FilePath
   }
+
+hydraHeadPeerCodec :: CA.JsonCodec HydraHeadPeer
+hydraHeadPeerCodec =
+  CA.object "HydraHeadPeer" $ CAR.record
+    { hydraNodeAddress: hostPortCodec
+    , hydraVerificationKey: CA.string
+    , cardanoVerificationKey: CA.string
+    }
 
 type HydraNodeHandlers =
   { apiServerStartedHandler :: Maybe (Effect Unit)

@@ -19,6 +19,7 @@ module HydraSdk.Internal.Lib.Codec
   , sumGenericCodec
   , toVariantGeneric
   , txCodec
+  , txHashCodec
   ) where
 
 import Prelude
@@ -31,6 +32,7 @@ import Cardano.Types
   , Ed25519KeyHash
   , ScriptHash
   , Transaction
+  , TransactionHash
   , TransactionInput(TransactionInput)
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
@@ -256,3 +258,6 @@ scriptHashCodec = asCborCodec "ScriptHash"
 
 txCodec :: CA.JsonCodec Transaction
 txCodec = asCborCodec "Transaction"
+
+txHashCodec :: CA.JsonCodec TransactionHash
+txHashCodec = asCborCodec "TransactionHash"

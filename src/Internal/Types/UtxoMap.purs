@@ -7,14 +7,19 @@ module HydraSdk.Internal.Types.UtxoMap
 
 import Prelude
 
-import Cardano.AsCbor (encodeCbor)
+import Cardano.AsCbor (decodeCbor, encodeCbor)
 import Cardano.Plutus.Types.CurrencySymbol (mkCurrencySymbol)
 import Cardano.Plutus.Types.TokenName (mkTokenName)
 import Cardano.Plutus.Types.Value (Value) as Plutus
 import Cardano.Plutus.Types.Value (lovelaceValueOf, singleton, toCardano) as Plutus.Value
 import Cardano.Types
   ( Address
-  , OutputDatum(OutputDatum)
+  , CborBytes
+  , DataHash
+  , Language(PlutusV1, PlutusV2, PlutusV3)
+  , OutputDatum(OutputDatum, OutputDatumHash)
+  , PlutusScript(PlutusScript)
+  , ScriptRef(NativeScriptRef, PlutusScriptRef)
   , TransactionInput
   , TransactionOutput(TransactionOutput)
   , Value(Value)
@@ -22,10 +27,10 @@ import Cardano.Types
 import Cardano.Types.AssetName (unAssetName)
 import Cardano.Types.BigNum (fromBigInt, toBigInt) as BigNum
 import Cardano.Types.DataHash (hashPlutusData)
-import Cardano.Types.OutputDatum (outputDatumDatum)
+import Cardano.Types.OutputDatum (outputDatumDataHash, outputDatumDatum)
 import Contract.CborBytes (cborBytesToHex)
 import Contract.PlutusData (PlutusData(Constr, Map, List, Integer, Bytes))
-import Contract.Prim.ByteArray (ByteArray, byteArrayToHex, hexToByteArray)
+import Contract.Prim.ByteArray (byteArrayToHex, hexToByteArray)
 import Contract.Utxos (UtxoMap)
 import Control.Alt ((<|>))
 import Control.Monad.Maybe.Trans (MaybeT(MaybeT), runMaybeT)
@@ -49,7 +54,8 @@ import Data.Bifunctor (bimap, lmap)
 import Data.Bitraversable (bitraverse)
 import Data.Codec.Argonaut (JsonCodec, decode, encode, json, object, prismaticCodec) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
-import Data.Codec.Argonaut.Record (optional, record) as CAR
+import Data.Codec.Argonaut.Generic (nullarySum) as CAG
+import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Either (Either, hush, note)
 import Data.Generic.Rep (class Generic)
 import Data.Map (fromFoldable, toUnfoldable) as Map
@@ -61,7 +67,8 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Foreign.Object (delete, fromFoldable, toUnfoldable) as Obj
 import HydraSdk.Internal.Lib.Codec
   ( addressCodec
-  , byteArrayCodec
+  , cborBytesCodec
+  , dataHashCodec
   , fromCaJsonDecodeError
   , printOref
   , readOref
@@ -118,8 +125,15 @@ txOutCodec =
   fromHydraTxOut rec = wrap
     { address: rec.address
     , amount: rec.value
-    , datum: OutputDatum <$> rec.inlineDatum
-    , scriptRef: Nothing
+    , datum:
+        maybe (OutputDatumHash <$> rec.datumhash) (Just <<< OutputDatum)
+          rec.inlineDatum
+    , scriptRef:
+        rec.referenceScript.script >>= \{ cborHex: scriptCbor, "type": scriptLang } ->
+          case scriptLang of
+            SimpleScript -> NativeScriptRef <$> decodeCbor scriptCbor
+            -- TODO: Plutus version encoded in CBOR?
+            _ -> PlutusScriptRef <$> decodeCbor scriptCbor
     }
 
   toHydraTxOut :: TransactionOutput -> HydraTxOut
@@ -127,29 +141,79 @@ txOutCodec =
     { address: rec.address
     , value: rec.amount
     , inlineDatum: outputDatumDatum =<< rec.datum
-    , inlineDatumhash: unwrap <<< encodeCbor <<< hashPlutusData <$>
-        (outputDatumDatum =<< rec.datum)
+    , inlineDatumhash: (map hashPlutusData <<< outputDatumDatum) =<< rec.datum
+    , datum: Nothing -- FIXME: should we resolve the datum?
+    , datumhash: outputDatumDataHash =<< rec.datum
+    , referenceScript:
+        { script:
+            rec.scriptRef <#> case _ of
+              NativeScriptRef nativeScript ->
+                { cborHex: encodeCbor nativeScript
+                , "type": SimpleScript
+                }
+              PlutusScriptRef plutusScript@(PlutusScript (_ /\ scriptLang)) ->
+                { cborHex: encodeCbor plutusScript
+                , "type":
+                    case scriptLang of
+                      PlutusV1 -> PlutusScriptV1
+                      PlutusV2 -> PlutusScriptV2
+                      PlutusV3 -> PlutusScriptV3
+                }
+        }
     }
 
 --
 
+-- TODO: add a hybrid codec for handling optional nullable fields upstream
+-- See https://github.com/garyb/purescript-codec-argonaut/issues/54
 type HydraTxOut =
   { address :: Address
   , value :: Value
   , inlineDatum :: Maybe PlutusData
-  , inlineDatumhash :: Maybe ByteArray
+  , inlineDatumhash :: Maybe DataHash
+  , datum :: Maybe PlutusData
+  , datumhash :: Maybe DataHash
+  , referenceScript :: { script :: Maybe HydraReferenceScript }
   }
 
--- TODO: datum, datumhash, referenceScript
--- https://github.com/cardano-scaling/hydra/blob/58620331f019bbcb13f1b22157df1bd1f02cc288/hydra-node/json-schemas/api.yaml#L2393
 hydraTxOutCodec :: CA.JsonCodec HydraTxOut
 hydraTxOutCodec =
   CA.object "HydraTxOut" $ CAR.record
     { address: addressCodec
     , value: valueCodec
     , inlineDatum: CA.maybe plutusDataCodec
-    , inlineDatumhash: CAR.optional byteArrayCodec
+    , inlineDatumhash: CA.maybe dataHashCodec
+    , datum: CA.maybe plutusDataCodec
+    , datumhash: CA.maybe dataHashCodec
+    , referenceScript:
+        CA.object "HydraTxOut:referenceScript" $ CAR.record
+          { script: CA.maybe hydraRefScriptCodec
+          }
     }
+
+type HydraReferenceScript =
+  { cborHex :: CborBytes
+  , "type" :: HydraReferenceScriptType
+  }
+
+hydraRefScriptCodec :: CA.JsonCodec HydraReferenceScript
+hydraRefScriptCodec =
+  CA.object "HydraReferenceScript" $ CAR.record
+    { cborHex: cborBytesCodec
+    , "type": hydraRefScriptTypeCodec
+    }
+
+data HydraReferenceScriptType
+  = SimpleScript
+  | PlutusScriptV1
+  | PlutusScriptV2
+  | PlutusScriptV3
+
+derive instance Generic HydraReferenceScriptType _
+
+hydraRefScriptTypeCodec :: CA.JsonCodec HydraReferenceScriptType
+hydraRefScriptTypeCodec =
+  CAG.nullarySum "HydraReferenceScriptType"
 
 --
 

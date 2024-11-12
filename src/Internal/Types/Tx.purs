@@ -29,6 +29,9 @@ mkHydraTx :: Transaction -> HydraTx
 mkHydraTx tx =
   { cborHex: tx
   , description: ""
-  -- TODO: add parameter for tx type
+  -- In hydra-node, the "type" field is not used to determine content
+  -- and any transaction is tried to decode as a "ConwayEra"
+  -- transaction, which mostly is backward compatible to
+  -- previous eras.
   , "type": "Tx ConwayEra"
   }

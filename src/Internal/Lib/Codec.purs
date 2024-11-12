@@ -5,6 +5,8 @@ module HydraSdk.Internal.Lib.Codec
   , byteArrayCodec
   , caDecodeString
   , caEncodeString
+  , cborBytesCodec
+  , dataHashCodec
   , dateTimeCodec
   , ed25519KeyHashCodec
   , fixTaggedSumCodec
@@ -25,6 +27,7 @@ import Cardano.AsCbor (class AsCbor, decodeCbor, encodeCbor)
 import Cardano.Types
   ( Address
   , CborBytes(CborBytes)
+  , DataHash
   , Ed25519KeyHash
   , ScriptHash
   , Transaction
@@ -211,6 +214,9 @@ byteArrayCodec =
 
 cborBytesCodec :: CA.JsonCodec CborBytes
 cborBytesCodec = wrapIso CborBytes byteArrayCodec
+
+dataHashCodec :: CA.JsonCodec DataHash
+dataHashCodec = asCborCodec "DataHash"
 
 dateTimeCodec :: CA.JsonCodec DateTime
 dateTimeCodec =

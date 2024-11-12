@@ -1,6 +1,9 @@
 module HydraSdk.Lib
-  ( module ExportCodec
+  ( module ExportAVar
+  , module ExportCodec
   ) where
+
+import HydraSdk.Internal.Lib.AVar (modify) as ExportAVar
 
 import HydraSdk.Internal.Lib.Codec
   ( class FromVariantGeneric

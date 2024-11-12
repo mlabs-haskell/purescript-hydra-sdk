@@ -27,6 +27,7 @@
   , "newtype"
   , "node-buffer"
   , "node-child-process"
+  , "node-fs"
   , "node-path"
   , "node-streams"
   , "optparse"
@@ -48,5 +49,5 @@
   , "variant"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "app/**/*.purs", "test/**/*.purs" ]
+, sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }

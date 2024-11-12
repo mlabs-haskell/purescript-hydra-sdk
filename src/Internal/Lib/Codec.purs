@@ -3,6 +3,7 @@ module HydraSdk.Internal.Lib.Codec
   , class ToVariantGeneric
   , addressCodec
   , byteArrayCodec
+  , caDecodeFile
   , caDecodeString
   , caEncodeString
   , cborBytesCodec
@@ -79,7 +80,11 @@ import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
 import Data.Variant (Variant)
 import Data.Variant (inj, prj) as Variant
+import Effect (Effect)
 import Foreign.Object (delete, fromHomogeneous, lookup, member, size, union) as Obj
+import Node.Encoding (Encoding(UTF8)) as Encoding
+import Node.FS.Sync (readTextFile) as FSSync
+import Node.Path (FilePath)
 import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons) as Row
 import Type.Proxy (Proxy(Proxy))
@@ -190,6 +195,11 @@ fromCaJsonDecodeError = case _ of
   CA.AtKey key err -> A.AtKey key $ fromCaJsonDecodeError err
   CA.Named name err -> A.Named name $ fromCaJsonDecodeError err
   CA.MissingValue -> A.MissingValue
+
+caDecodeFile :: forall a. CA.JsonCodec a -> FilePath -> Effect (Either CA.JsonDecodeError a)
+caDecodeFile codec =
+  map (caDecodeString codec)
+    <<< FSSync.readTextFile Encoding.UTF8
 
 caDecodeString :: forall a. CA.JsonCodec a -> String -> Either CA.JsonDecodeError a
 caDecodeString codec jsonStr = do

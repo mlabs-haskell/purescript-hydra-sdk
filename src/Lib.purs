@@ -1,6 +1,7 @@
 module HydraSdk.Lib
   ( module ExportAVar
   , module ExportCodec
+  , module ExportLogger
   ) where
 
 import HydraSdk.Internal.Lib.AVar (modify) as ExportAVar
@@ -30,3 +31,5 @@ import HydraSdk.Internal.Lib.Codec
   , txCodec
   , txHashCodec
   ) as ExportCodec
+
+import HydraSdk.Internal.Lib.Logger (log') as ExportLogger

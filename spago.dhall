@@ -22,6 +22,7 @@
   , "http-methods"
   , "integers"
   , "js-bigints"
+  , "js-date"
   , "maybe"
   , "monad-logger"
   , "newtype"

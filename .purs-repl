@@ -1,5 +1,6 @@
 import Prelude
 import HydraSdk.Extra.AppManager
+import HydraSdk.Lib
 import HydraSdk.NodeApi
 import HydraSdk.Process 
 import HydraSdk.Types

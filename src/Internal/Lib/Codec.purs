@@ -76,7 +76,7 @@ import Data.Maybe (Maybe(Just, Nothing), fromJust)
 import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
 import Data.String (Pattern(Pattern))
-import Data.String (split) as String
+import Data.String (split, stripSuffix, take) as String
 import Data.Symbol (class IsSymbol)
 import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
@@ -236,12 +236,19 @@ dateTimeCodec :: CA.JsonCodec DateTime
 dateTimeCodec =
   CA.prismaticCodec
     "DateTime"
-    (hush <<< unformatDateTime formatter)
+    ( \str ->
+        case String.split (Pattern ".") <$> String.stripSuffix (Pattern "Z") str of
+          Just [ x, nsec ] ->
+            -- truncate to milliseconds
+            hush $ unformatDateTime formatter $ x <> "." <> String.take 3 nsec <> "Z"
+          _ ->
+            Nothing
+    )
     (unsafePartial fromJust <<< hush <<< formatDateTime formatter)
     CA.string
   where
   formatter :: String
-  formatter = "YYYY-MM-DDTHH:mm:ssZ"
+  formatter = "YYYY-MM-DDTHH:mm:ss.SSSZ"
 
 ed25519KeyHashCodec :: CA.JsonCodec Ed25519KeyHash
 ed25519KeyHashCodec = asCborCodec "Ed25519KeyHash"

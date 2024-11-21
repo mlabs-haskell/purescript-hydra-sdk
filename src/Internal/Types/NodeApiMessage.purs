@@ -47,7 +47,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
 
 import Prelude
 
-import Cardano.Types (Ed25519KeyHash, ScriptHash)
+import Cardano.Types (PublicKey, ScriptHash)
 import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
 import Data.Codec.Argonaut.Record (optional, record) as CAR
 import Data.Codec.Argonaut.Variant (variantMatch) as CAV
@@ -58,8 +58,8 @@ import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import HydraSdk.Internal.Lib.Codec
   ( dateTimeCodec
-  , ed25519KeyHashCodec
   , fixTaggedSumCodec
+  , publicKeyCodec
   , scriptHashCodec
   , sumGenericCodec
   )
@@ -129,7 +129,7 @@ hydraNodeApiInMessageCodec =
 -- | and clients should take consequence of seeing this. For example,
 -- | we can assume no peers connected when we see 'Greetings'.
 type GreetingsMessage =
-  { me :: { vkey :: Ed25519KeyHash }
+  { me :: { vkey :: PublicKey }
   , headStatus :: HydraHeadStatus
   , hydraHeadId :: Maybe ScriptHash
   , snapshotUtxo :: Maybe HydraUtxoMap
@@ -141,7 +141,7 @@ greetingsMessageCodec :: CA.JsonCodec GreetingsMessage
 greetingsMessageCodec =
   CA.object "GreetingsMessage" $ CAR.record
     { me: CA.object "GreetingsMessage:me" $ CAR.record
-        { vkey: ed25519KeyHashCodec
+        { vkey: publicKeyCodec
         }
     , headStatus: headStatusCodec
     , snapshotUtxo: CAR.optional hydraUtxoMapCodec
@@ -200,7 +200,7 @@ peerHandshakeFailureMessageCodec =
 -- | Head ID.
 type HeadInitMessage =
   { headId :: ScriptHash
-  , parties :: Array { vkey :: Ed25519KeyHash }
+  , parties :: Array { vkey :: PublicKey }
   , seq :: Int
   , timestamp :: DateTime
   }
@@ -211,7 +211,7 @@ headInitMessageCodec =
     { headId: scriptHashCodec
     , parties:
         CA.array $ CA.object "HeadInitMessage:parties" $ CAR.record
-          { vkey: ed25519KeyHashCodec
+          { vkey: publicKeyCodec
           }
     , seq: CA.int
     , timestamp: dateTimeCodec
@@ -223,7 +223,7 @@ headInitMessageCodec =
 -- | A Commit transaction from a Head participant has been observed
 -- | onchain.
 type CommittedMessage =
-  { party :: { vkey :: Ed25519KeyHash }
+  { party :: { vkey :: PublicKey }
   , utxo :: HydraUtxoMap
   , seq :: Int
   , timestamp :: DateTime
@@ -234,7 +234,7 @@ committedMessageCodec =
   CA.object "CommittedMessage" $ CAR.record
     { party:
         CA.object "CommittedMessage:party" $ CAR.record
-          { vkey: ed25519KeyHashCodec
+          { vkey: publicKeyCodec
           }
     , utxo: hydraUtxoMapCodec
     , seq: CA.int

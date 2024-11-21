@@ -24,6 +24,8 @@ import HydraSdk.Internal.Lib.Codec
   , logLevelCodec
   , orefCodec
   , printOref
+  , publicKeyCodec
+  , rawBytesCodec
   , readOref
   , scriptHashCodec
   , sumGenericCodec

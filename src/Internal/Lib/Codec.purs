@@ -16,6 +16,8 @@ module HydraSdk.Internal.Lib.Codec
   , logLevelCodec
   , orefCodec
   , printOref
+  , publicKeyCodec
+  , rawBytesCodec
   , readOref
   , scriptHashCodec
   , sumGenericCodec
@@ -32,12 +34,15 @@ import Cardano.Types
   , CborBytes(CborBytes)
   , DataHash
   , Ed25519KeyHash
+  , PublicKey
+  , RawBytes(RawBytes)
   , ScriptHash
   , Transaction
   , TransactionHash
   , TransactionInput(TransactionInput)
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
+import Cardano.Types.PublicKey (fromRawBytes, toRawBytes) as PublicKey
 import Contract.CborBytes (cborBytesToHex, hexToCborBytes)
 import Control.Alt ((<|>))
 import Data.Argonaut (Json)
@@ -283,6 +288,14 @@ orefCodec =
 printOref :: TransactionInput -> String
 printOref (TransactionInput rec) =
   cborBytesToHex (encodeCbor rec.transactionId) <> "#" <> UInt.toString rec.index
+
+publicKeyCodec :: CA.JsonCodec PublicKey
+publicKeyCodec =
+  CA.prismaticCodec "PublicKey" PublicKey.fromRawBytes PublicKey.toRawBytes
+    rawBytesCodec
+
+rawBytesCodec :: CA.JsonCodec RawBytes
+rawBytesCodec = wrapIso RawBytes byteArrayCodec
 
 readOref :: String -> Maybe TransactionInput
 readOref str =

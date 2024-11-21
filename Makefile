@@ -1,4 +1,4 @@
-.PHONY: build, format, repl, docs
+.PHONY: build, format, repl, docs, build-example, run-example
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
@@ -31,3 +31,10 @@ repl: requires-nix-shell
 docs:
 	nix build .#docs
 	${open-in-browser} result/generated-docs/html/index.html
+
+build-example:
+	cd example/minimal && \
+		spago build --purs-args ${purs-args}
+
+run-example:
+	docker compose -f example/minimal/docker/cluster/docker-compose.yaml up --build --no-attach cardano-node

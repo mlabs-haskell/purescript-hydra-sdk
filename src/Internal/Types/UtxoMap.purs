@@ -129,7 +129,7 @@ txOutCodec =
         maybe (OutputDatumHash <$> rec.datumhash) (Just <<< OutputDatum)
           rec.inlineDatum
     , scriptRef:
-        rec.referenceScript.script >>= \{ cborHex: scriptCbor, "type": scriptLang } ->
+        rec.referenceScript >>= \{ script: { cborHex: scriptCbor, "type": scriptLang } } ->
           case scriptLang of
             SimpleScript -> NativeScriptRef <$> decodeCbor scriptCbor
             -- TODO: Plutus version encoded in CBOR?
@@ -145,21 +145,22 @@ txOutCodec =
     , datum: Nothing -- FIXME: should we resolve the datum?
     , datumhash: outputDatumDataHash =<< rec.datum
     , referenceScript:
-        { script:
-            rec.scriptRef <#> case _ of
-              NativeScriptRef nativeScript ->
-                { cborHex: encodeCbor nativeScript
-                , "type": SimpleScript
-                }
-              PlutusScriptRef plutusScript@(PlutusScript (_ /\ scriptLang)) ->
-                { cborHex: encodeCbor plutusScript
-                , "type":
-                    case scriptLang of
-                      PlutusV1 -> PlutusScriptV1
-                      PlutusV2 -> PlutusScriptV2
-                      PlutusV3 -> PlutusScriptV3
-                }
-        }
+        rec.scriptRef <#> \scriptRef ->
+          { script:
+              case scriptRef of
+                NativeScriptRef nativeScript ->
+                  { cborHex: encodeCbor nativeScript
+                  , "type": SimpleScript
+                  }
+                PlutusScriptRef plutusScript@(PlutusScript (_ /\ scriptLang)) ->
+                  { cborHex: encodeCbor plutusScript
+                  , "type":
+                      case scriptLang of
+                        PlutusV1 -> PlutusScriptV1
+                        PlutusV2 -> PlutusScriptV2
+                        PlutusV3 -> PlutusScriptV3
+                  }
+          }
     }
 
 --
@@ -173,7 +174,7 @@ type HydraTxOut =
   , inlineDatumhash :: Maybe DataHash
   , datum :: Maybe PlutusData
   , datumhash :: Maybe DataHash
-  , referenceScript :: { script :: Maybe HydraReferenceScript }
+  , referenceScript :: Maybe { script :: HydraReferenceScript }
   }
 
 hydraTxOutCodec :: CA.JsonCodec HydraTxOut
@@ -186,8 +187,8 @@ hydraTxOutCodec =
     , datum: CA.maybe plutusDataCodec
     , datumhash: CA.maybe dataHashCodec
     , referenceScript:
-        CA.object "HydraTxOut:referenceScript" $ CAR.record
-          { script: CA.maybe hydraRefScriptCodec
+        CA.maybe $ CA.object "HydraTxOut:referenceScript" $ CAR.record
+          { script: hydraRefScriptCodec
           }
     }
 

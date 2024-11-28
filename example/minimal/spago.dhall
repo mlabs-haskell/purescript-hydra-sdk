@@ -22,6 +22,7 @@
   , "posix-types"
   , "prelude"
   , "profunctor-lenses"
+  , "quickcheck"
   , "refs"
   , "transformers"
   , "tuples"

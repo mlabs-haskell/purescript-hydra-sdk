@@ -13,7 +13,7 @@
     "nodeSocket": "node-ipc/node.socket",
     "pparams": "protocol-parameters.json",
     "hydraScriptsTxHash": "03f8deb122fbbd98af8eb58ef56feda37728ec957d39586b78198a0cf624412a",
-    "contestPeriodSec": 60,
+    "contestPeriodSec": 120,
     "peers": [
       {
         "hydraNodeAddress": "delegate-node-a:7000",
@@ -23,6 +23,7 @@
     ]
   },
   "blockfrostApiKey": null,
-  "logLevel": "trace",
+  "logLevel": "info",
+  "ctlLogLevel": "warn",
   "commitOutRef": null
 }

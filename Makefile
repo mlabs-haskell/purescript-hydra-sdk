@@ -1,8 +1,9 @@
-.PHONY: build, format, repl, docs, build-example, run-example
+.PHONY: build, format, repl, docs, build-example, run-example, docker-cleanup
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
 purs-args := "--stash --censor-lib --censor-codes=ImplicitImport,ImplicitQualifiedImport,ImplicitQualifiedImportReExport,UserDefinedWarning"
+example-docker := example/minimal/docker/cluster/docker-compose.yaml
 
 system := $(shell uname -s)
 ifeq (${system},Linux)
@@ -36,5 +37,9 @@ build-example:
 	cd example/minimal && \
 		spago build --purs-args ${purs-args}
 
-run-example:
-	docker compose -f example/minimal/docker/cluster/docker-compose.yaml up --build --no-attach cardano-node
+run-example: docker-cleanup
+	docker compose -f ${example-docker} up --build --no-attach cardano-node
+
+docker-cleanup:
+	docker compose -f ${example-docker} rm --force --stop
+	docker volume rm -f cluster_hydra-persist-a cluster_hydra-persist-b

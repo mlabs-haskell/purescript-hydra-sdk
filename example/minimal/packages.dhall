@@ -3,7 +3,8 @@ let upstream =
         sha256:3e9fbc9ba03e9a1fcfd895f65e2d50ee2f5e86c4cd273f3d5c841b655a0e1bda
 
 let additions =
-      { aeson =
+      { hydra-sdk = ../../spago.dhall as Location
+      , aeson =
         { dependencies =
           [ "aff"
           , "argonaut"
@@ -601,59 +602,6 @@ let additions =
         , repo = "https://github.com/passy/purescript-errors.git"
         , version = "670485beb1e026f77d52ca58ce10c145d96c11ba"
         }
-      , hydra-sdk =
-        { dependencies =
-          [ "aff"
-          , "affjax"
-          , "argonaut"
-          , "arrays"
-          , "avar"
-          , "bifunctors"
-          , "bytearrays"
-          , "cardano-transaction-lib"
-          , "cardano-types"
-          , "codec-argonaut"
-          , "control"
-          , "datetime"
-          , "effect"
-          , "either"
-          , "errors"
-          , "exceptions"
-          , "foldable-traversable"
-          , "foreign-object"
-          , "formatters"
-          , "http-methods"
-          , "integers"
-          , "js-bigints"
-          , "js-date"
-          , "maybe"
-          , "monad-logger"
-          , "newtype"
-          , "node-buffer"
-          , "node-child-process"
-          , "node-path"
-          , "node-streams"
-          , "optparse"
-          , "ordered-collections"
-          , "parsing"
-          , "partial"
-          , "plutus-types"
-          , "prelude"
-          , "profunctor"
-          , "quickcheck"
-          , "safely"
-          , "strings"
-          , "tailrec"
-          , "transformers"
-          , "tuples"
-          , "uint"
-          , "uri"
-          , "uuid"
-          , "variant"
-          ]
-        , repo = "https://github.com/mlabs-haskell/purescript-hydra-sdk"
-        , version = "fde44498050dda20af5541ce7b9d6970be541a86"
-        }
       }
 
-in  (upstream // additions)
+in (upstream // additions)

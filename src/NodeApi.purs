@@ -3,7 +3,7 @@ module HydraSdk.NodeApi
   , module ExportWebSocket
   ) where
 
-import HydraSdk.Internal.NodeApi.Http (commitRequest, commitRequestAff) as ExportHttp
+import HydraSdk.Internal.NodeApi.Http (commitRequest) as ExportHttp
 
 import HydraSdk.Internal.NodeApi.WebSocket
   ( HydraNodeApiHandlers

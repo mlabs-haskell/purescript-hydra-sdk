@@ -5,6 +5,7 @@ module HydraSdk.Example.Minimal.App
   , appLogger
   , initApp
   , readHeadStatus
+  , readUtxoSnapshot
   , runApp
   , runAppEff
   , runContractInApp
@@ -14,7 +15,7 @@ module HydraSdk.Example.Minimal.App
 
 import Prelude
 
-import Cardano.Types (TransactionInput, TransactionOutput, UtxoMap)
+import Cardano.Types (TransactionInput, TransactionOutput)
 import Contract.Config
   ( ContractParams
   , PrivatePaymentKeySource(PrivatePaymentKeyFile)
@@ -37,7 +38,6 @@ import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
 import Ctl.Internal.ServerConfig (blockfrostPublicSanchonetServerConfig)
 import Data.Log.Formatter.Pretty (prettyFormatter)
 import Data.Log.Message (Message)
-import Data.Map (empty) as Map
 import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Tuple (Tuple(Tuple))
 import Effect (Effect)
@@ -100,6 +100,9 @@ readHeadStatus = (liftAff <<< AVar.read) =<< asks _.headStatus
 setHeadStatus :: HydraHeadStatus -> AppM Unit
 setHeadStatus status = (void <<< AVar.modify (const (pure status))) =<< asks _.headStatus
 
+readUtxoSnapshot :: AppM HydraSnapshot
+readUtxoSnapshot = (liftAff <<< AVar.read) =<< asks _.utxoSnapshot
+
 setUtxoSnapshot :: HydraSnapshot -> AppM Unit
 setUtxoSnapshot snapshot =
   (void <<< AVar.modify (const (pure snapshot)))
@@ -154,7 +157,7 @@ initApp config@{ hydraNodeStartupParams: { network, cardanoSigningKey }, commitO
   contractParams backendParams =
     { backendParams
     , networkId: networkToNetworkId network
-    , logLevel: config.logLevel
+    , logLevel: config.ctlLogLevel
     , walletSpec: Just $ UseKeys (PrivatePaymentKeyFile cardanoSigningKey) Nothing Nothing
     , customLogger: Nothing
     , suppressLogs: false

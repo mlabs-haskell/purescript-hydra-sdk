@@ -49,4 +49,3 @@ prepareUtxoContract = do
     { transactionId: txHash
     , index: UInt.fromInt index
     }
-

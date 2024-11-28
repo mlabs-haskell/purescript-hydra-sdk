@@ -2,6 +2,7 @@ module HydraSdk.Lib
   ( module ExportAVar
   , module ExportCodec
   , module ExportLogger
+  , module ExportTransaction
   ) where
 
 import HydraSdk.Internal.Lib.AVar (modify) as ExportAVar
@@ -35,3 +36,8 @@ import HydraSdk.Internal.Lib.Codec
   ) as ExportCodec
 
 import HydraSdk.Internal.Lib.Logger (log') as ExportLogger
+
+import HydraSdk.Internal.Lib.Transaction
+  ( reSignTransaction
+  , setAuxDataHash
+  ) as ExportTransaction

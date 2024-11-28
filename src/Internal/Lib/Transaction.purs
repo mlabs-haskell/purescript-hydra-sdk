@@ -1,5 +1,6 @@
 module HydraSdk.Internal.Lib.Transaction
-  ( fixCommitTx
+  ( reSignTransaction
+  , setAuxDataHash
   ) where
 
 import Prelude
@@ -13,9 +14,6 @@ import Contract.Monad (Contract)
 import Contract.Transaction (signTransaction)
 import Data.Lens ((.~))
 import Data.Newtype (unwrap)
-
-fixCommitTx :: Transaction -> Contract Transaction
-fixCommitTx = reSignTransaction <<< setAuxDataHash
 
 setAuxDataHash :: Transaction -> Transaction
 setAuxDataHash tx =

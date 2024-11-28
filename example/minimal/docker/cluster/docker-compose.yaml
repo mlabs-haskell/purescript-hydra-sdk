@@ -19,8 +19,8 @@ services:
 
   delegate-node-a:
     build:
-      context: "../.."
-      dockerfile: "docker/node/Dockerfile"
+      context: "../../../.."
+      dockerfile: "example/minimal/docker/node/Dockerfile"
     depends_on:
       cardano-node:
         condition: service_healthy
@@ -28,21 +28,21 @@ services:
     volumes:
       - type: "bind"
         source: "./config-a.json"
-        target: "/app/config.json"
+        target: "/app/example/minimal/config.json"
       - type: "bind"
         source: "keys"
-        target: "/app/keys"
+        target: "/app/example/minimal/keys"
       - type: "volume"
         source: "node-ipc"
-        target: "/app/node-ipc"
+        target: "/app/example/minimal/node-ipc"
       - type: "volume"
         source: "hydra-persist-a"
-        target: "/app/hydra-persist"
+        target: "/app/example/minimal/hydra-persist"
 
   delegate-node-b:
     build:
-      context: "../.."
-      dockerfile: "docker/node/Dockerfile"
+      context: "../../../.."
+      dockerfile: "example/minimal/docker/node/Dockerfile"
     depends_on:
       cardano-node:
         condition: service_healthy
@@ -50,16 +50,16 @@ services:
     volumes:
       - type: "bind"
         source: "./config-b.json"
-        target: "/app/config.json"
+        target: "/app/example/minimal/config.json"
       - type: "bind"
         source: "keys"
-        target: "/app/keys"
+        target: "/app/example/minimal/keys"
       - type: "volume"
         source: "node-ipc"
-        target: "/app/node-ipc"
+        target: "/app/example/minimal/node-ipc"
       - type: "volume"
         source: "hydra-persist-b"
-        target: "/app/hydra-persist"
+        target: "/app/example/minimal/hydra-persist"
 
 volumes:
   hydra-persist-a:

@@ -22,6 +22,7 @@ type DelegateServerConfig =
   { hydraNodeStartupParams :: HydraNodeStartupParams
   , blockfrostApiKey :: Maybe String
   , logLevel :: LogLevel
+  , ctlLogLevel :: LogLevel
   , commitOutRef :: Maybe TransactionInput
   }
 
@@ -31,6 +32,7 @@ delegateServerConfigCodec =
     { hydraNodeStartupParams: hydraNodeStartupParamsCodec
     , blockfrostApiKey: CA.maybe CA.string
     , logLevel: logLevelCodec
+    , ctlLogLevel: logLevelCodec
     , commitOutRef: CA.maybe orefCodec
     }
 

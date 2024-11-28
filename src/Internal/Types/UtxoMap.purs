@@ -1,5 +1,6 @@
 module HydraSdk.Internal.Types.UtxoMap
   ( HydraUtxoMap(HydraUtxoMap)
+  , decodePlutusData
   , fromUtxoMap
   , hydraUtxoMapCodec
   , toUtxoMap
@@ -55,7 +56,7 @@ import Data.Bitraversable (bitraverse)
 import Data.Codec.Argonaut (JsonCodec, decode, encode, json, object, prismaticCodec) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Generic (nullarySum) as CAG
-import Data.Codec.Argonaut.Record (record) as CAR
+import Data.Codec.Argonaut.Record (optional, record) as CAR
 import Data.Either (Either, hush, note)
 import Data.Generic.Rep (class Generic)
 import Data.Map (fromFoldable, toUnfoldable) as Map
@@ -126,7 +127,7 @@ txOutCodec =
     { address: rec.address
     , amount: rec.value
     , datum:
-        maybe (OutputDatumHash <$> rec.datumhash) (Just <<< OutputDatum)
+        maybe (OutputDatumHash <$> join rec.datumhash) (Just <<< OutputDatum)
           rec.inlineDatum
     , scriptRef:
         rec.referenceScript >>= \{ script: { cborHex: scriptCbor, "type": scriptLang } } ->
@@ -141,9 +142,9 @@ txOutCodec =
     { address: rec.address
     , value: rec.amount
     , inlineDatum: outputDatumDatum =<< rec.datum
-    , inlineDatumhash: (map hashPlutusData <<< outputDatumDatum) =<< rec.datum
+    , inlineDatumhash: map hashPlutusData <<< outputDatumDatum <$> rec.datum
     , datum: Nothing -- FIXME: should we resolve the datum?
-    , datumhash: outputDatumDataHash =<< rec.datum
+    , datumhash: outputDatumDataHash <$> rec.datum
     , referenceScript:
         rec.scriptRef <#> \scriptRef ->
           { script:
@@ -171,9 +172,9 @@ type HydraTxOut =
   { address :: Address
   , value :: Value
   , inlineDatum :: Maybe PlutusData
-  , inlineDatumhash :: Maybe DataHash
+  , inlineDatumhash :: Maybe (Maybe DataHash)
   , datum :: Maybe PlutusData
-  , datumhash :: Maybe DataHash
+  , datumhash :: Maybe (Maybe DataHash)
   , referenceScript :: Maybe { script :: HydraReferenceScript }
   }
 
@@ -183,9 +184,9 @@ hydraTxOutCodec =
     { address: addressCodec
     , value: valueCodec
     , inlineDatum: CA.maybe plutusDataCodec
-    , inlineDatumhash: CA.maybe dataHashCodec
+    , inlineDatumhash: CAR.optional $ CA.maybe dataHashCodec
     , datum: CA.maybe plutusDataCodec
-    , datumhash: CA.maybe dataHashCodec
+    , datumhash: CAR.optional $ CA.maybe dataHashCodec
     , referenceScript:
         CA.maybe $ CA.object "HydraTxOut:referenceScript" $ CAR.record
           { script: hydraRefScriptCodec
@@ -286,6 +287,7 @@ plutusDataCodec =
   CA.prismaticCodec "PlutusData" (hush <<< decodePlutusData) encodePlutusData
     CA.json
 
+-- TODO: Switch to Aeson to avoid precision issues when handling large Numbers
 encodePlutusData :: PlutusData -> Json
 encodePlutusData = case _ of
   Constr constr fields ->

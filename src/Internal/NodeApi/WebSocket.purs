@@ -43,11 +43,13 @@ type HydraNodeApiWebSocket (m :: Type -> Type) =
   }
 
 -- | Handlers to attach to the hydra-node API WebSocket connection.
+-- |
+-- | `messageHandler`: Attempts to decode incoming messages to
+-- | `HydraNodeApi_InMessage`. On decoding failure, logs the error and passes
+-- | the raw message instead.
 type HydraNodeApiHandlers (m :: Type -> Type) =
   { connectHandler :: HydraNodeApiWebSocket m -> m Unit
   , errorHandler :: HydraNodeApiWebSocket m -> String -> m Unit
-  -- | Attempts to decode incoming messages to `HydraNodeApi_InMessage`.
-  -- | On decoding failure, logs the error and passes the raw message instead.
   , messageHandler :: HydraNodeApiWebSocket m -> Either String HydraNodeApi_InMessage -> m Unit
   }
 

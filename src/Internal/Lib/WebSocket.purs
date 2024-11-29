@@ -7,7 +7,7 @@ module HydraSdk.Internal.Lib.WebSocket
 
 import Prelude
 
-import Contract.Log (logTrace')
+import Contract.Log (logError', logTrace')
 import Control.Monad.Logger.Class (class MonadLogger)
 import Ctl.Internal.JsWebSocket
   ( JsWebSocket
@@ -61,10 +61,11 @@ mkWebSocket builder =
         \callback ->
           _onWsMessage ws wsLogger \msgRaw ->
             builder.runM do
-              logTrace' $ "onMessage raw: " <> msgRaw
+              logTrace' $ "mkWebSocket:onMessage: Raw message: " <> msgRaw
               case caDecodeString builder.inMsgCodec msgRaw of
                 Left decodeErr -> do
-                  logTrace' $ "onMessage decode error: " <> CA.printJsonDecodeError decodeErr
+                  logError' $ "mkWebSocket:onMessage: Decode error: " <>
+                    CA.printJsonDecodeError decodeErr
                   callback $ Left msgRaw
                 Right msg ->
                   callback $ Right msg

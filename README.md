@@ -11,6 +11,8 @@ applications.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Applications](#applications)
+- [Preliminaries](#preliminaries)
+- [Getting Started](#getting-started)
 - [Functionality](#functionality)
 - [Development Workflows](#development-workflows)
 
@@ -20,6 +22,53 @@ applications.
 
 Please refer to [hydra-auction-offchain](https://github.com/mlabs-haskell/hydra-auction-offchain)
 for a full-fledged example that utilizes this SDK.
+
+### Preliminaries
+
+Since using this SDK implies a certain degree of understanding of the Hydra
+protocol, it is advisable to get familiar with the ["Hydra: Fast Isomorphic State Channels" paper](https://iohk.io/en/research/library/papers/hydra-fast-isomorphic-state-channels/)
+and the [Hydra Head protocol documentation](https://hydra.family/head-protocol/docs/)
+before proceeding with the **Getting Started** guide below.
+
+### Getting Started
+
+The simplest way to get a sense of how this SDK can help build Hydra-based
+applications is to run our minimal example and then adapt or extend it to suit
+your specific requirements. Follow the step-by-step guide below to spin up
+a cluster of two nodes, with each node running the minimal example logic.
+
+1. Enter the Nix development environment by running `nix develop` from the root
+directory of this repository. This will put you in the shell with all the
+necessary executables required to continue with the setup procedure.
+
+2. In [example/minimal/docker/cluster/](example/minimal/docker/cluster/) you
+can find configuration files for both nodes. The only field that needs to be
+updated here is the `blockfrostApiKey`, which should be set to a valid
+Blockfrost API key **for preprod**. Visit the [Blockfrost website](https://blockfrost.io/)
+to generate a fresh API key.
+
+3. Execute `make gen-keys` to generate the necessary Cardano and Hydra keys
+required by the underlying Hydra nodes. Cardano keys are used to authenticate
+on-chain transactions, while the Hydra keys are used for multi-signing snapshots
+within a Hydra Head. This command will output two Cardano preprod addresses
+that must be pre-funded with sufficient tADA to run properly functioning Hydra
+nodes. Use the [Testnets faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/)
+to request tADA.
+
+4. Finally, execute `make run-example` to launch a Hydra Head with two
+participants running the minimal example logic.
+
+NOTE: Hydra nodes require a fully-synchronized Cardano node to operate
+correctly. No additional setup actions need to be performed to
+configure the Cardano node as it is already included in the Docker
+Compose configuration. However it may take several hours on the first
+run to synchronize the node. Keep in mind that Hydra nodes
+are configured to run only once the Cardano node is fully
+synchronized, and the `cardano-node` output is suppressed to not
+interfere with useful Hydra Head logs. As a result, there will be no
+output during synchronization. Instead, use `docker logs` or run
+`cardano-cli query tip` from within the `cardano-node` Docker
+container to track the synchronization progress. 
 
 ### Functionality
 

@@ -1,9 +1,10 @@
-.PHONY: build, format, repl, docs, build-example, run-example, docker-cleanup
+.PHONY: build, format, repl, docs, build-example, run-example, docker-cleanup, gen-keys
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
 purs-args := "--stash --censor-lib --censor-codes=ImplicitImport,ImplicitQualifiedImport,ImplicitQualifiedImportReExport,UserDefinedWarning"
 example-docker := example/minimal/docker/cluster/docker-compose.yaml
+example-keys := example/minimal/docker/cluster/keys/
 
 system := $(shell uname -s)
 ifeq (${system},Linux)
@@ -43,3 +44,21 @@ run-example: docker-cleanup
 docker-cleanup:
 	docker compose -f ${example-docker} rm --force --stop
 	docker volume rm -f cluster_hydra-persist-a cluster_hydra-persist-b
+
+gen-keys: requires-nix-shell
+	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-a 
+	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-b 
+	@cardano-cli address key-gen \
+		--signing-key-file ${example-keys}/cardano-a.sk \
+		--verification-key-file ${example-keys}/cardano-a.vk
+	@cardano-cli address build \
+		--payment-verification-key-file ${example-keys}/cardano-a.vk \
+		--testnet-magic 1
+	@echo
+	@cardano-cli address key-gen \
+		--signing-key-file ${example-keys}/cardano-b.sk \
+		--verification-key-file ${example-keys}/cardano-b.vk
+	@cardano-cli address build \
+		--payment-verification-key-file ${example-keys}/cardano-b.vk \
+		--testnet-magic 1
+	@echo

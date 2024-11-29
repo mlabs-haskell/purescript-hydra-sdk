@@ -1,3 +1,5 @@
+-- | This module provides an interface for establishing a connection
+-- | and interacting with the hydra-node WebSocket API.
 module HydraSdk.Internal.NodeApi.WebSocket
   ( HydraNodeApiHandlers
   , HydraNodeApiWebSocket
@@ -28,6 +30,8 @@ import HydraSdk.Internal.Types.NodeApiMessage
   )
 import HydraSdk.Internal.Types.Tx (mkHydraTx)
 
+-- | A record with operations that can be executed by the client to interact
+-- | with the hydra-node WebSocket API.
 type HydraNodeApiWebSocket (m :: Type -> Type) =
   { baseWs :: WebSocket m HydraNodeApi_InMessage HydraNodeApi_OutMessage
   , initHead :: Effect Unit
@@ -38,29 +42,35 @@ type HydraNodeApiWebSocket (m :: Type -> Type) =
   , fanout :: Effect Unit
   }
 
+-- | Handlers to attach to the hydra-node API WebSocket connection.
 type HydraNodeApiHandlers (m :: Type -> Type) =
   { connectHandler :: HydraNodeApiWebSocket m -> m Unit
   , errorHandler :: HydraNodeApiWebSocket m -> String -> m Unit
+  -- | Attempts to decode incoming messages to `HydraNodeApi_InMessage`.
+  -- | On decoding failure, logs the error and passes the raw message instead.
   , messageHandler :: HydraNodeApiWebSocket m -> Either String HydraNodeApi_InMessage -> m Unit
-  -- ^ Attempts to decode incoming messages to `HydraNodeApi_InMessage`.
-  -- On decoding failure, logs the error and passes the raw message instead.
   }
 
+-- | Configuration parameters for the hydra-node API WebSocket. 
+-- |
+-- | `url`: Address of the hydra-node API WebSocket.
+-- |
+-- | `runM`: Since the handlers of the underlying raw WebSocket are executed in
+-- | the `Effect` monad, this function allows running client monad
+-- | computations within that context.
+-- |
+-- | `handlers`: Handlers to attach to the established WebSocket connection.
+-- |
+-- | `txRetryStrategies`: Retry strategies for transactions that may be silently
+-- |  dropped by the cardano-node due to limitations of the hydra-node.
 type HydraNodeApiWebSocketBuilder (m :: Type -> Type) =
   { url :: Url
-  -- ^ Address of the hydra-node API WebSocket.
   , runM :: m Unit -> Effect Unit
-  -- ^ Since the handlers of the underlying raw WebSocket are executed in the
-  -- `Effect` monad, this function allows running client monad computations
-  -- within that context.
   , handlers :: HydraNodeApiHandlers m
-  -- ^ Handlers to attach to the established WebSocket connection. 
   , txRetryStrategies ::
       { close :: HydraTxRetryStrategy m
       , contest :: HydraTxRetryStrategy m
       }
-  -- ^ Retry strategies for transactions that may be silently dropped by the
-  -- cardano-node due to limitations of the hydra-node.
   }
 
 -- | Retry strategy to apply when submitting a Hydra transaction.
@@ -79,6 +89,9 @@ data HydraTxRetryStrategy (m :: Type -> Type)
       }
   | DontRetryTx
 
+-- | A default success predicate for the retry strategy for Close transaction.
+-- | Checks whether the Hydra Head has been successfully closed by inspecting
+-- | the current Head status.
 defaultCloseHeadSuccessPredicate
   :: forall (m :: Type -> Type)
    . Functor m

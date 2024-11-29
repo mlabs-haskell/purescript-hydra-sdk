@@ -42,7 +42,7 @@ import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
 import Node.Stream (onDataString)
 
--- | Parameters to be passed to the `hydra-node` child process on startup.
+-- | Parameters to be passed to the hydra-node child process on startup.
 type HydraNodeStartupParams =
   { nodeId :: String
   , hydraNodeAddress :: HostPort
@@ -94,7 +94,7 @@ hydraHeadPeerCodec =
     , cardanoVerificationKey: CA.string
     }
 
--- | Optional handlers to attach to the newly spawned `hydra-node` child process.
+-- | Optional handlers to attach to the newly spawned hydra-node child process.
 type HydraNodeHandlers =
   { apiServerStartedHandler :: Maybe (Effect Unit)
   , stdoutHandler :: Maybe (String -> Effect Unit)

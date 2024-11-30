@@ -1,3 +1,5 @@
+-- | This module provides convenience functions for working with
+-- | `Cardano.Types.Transaction`.
 module HydraSdk.Internal.Lib.Transaction
   ( reSignTransaction
   , setAuxDataHash
@@ -15,10 +17,12 @@ import Contract.Transaction (signTransaction)
 import Data.Lens ((.~))
 import Data.Newtype (unwrap)
 
+-- | Computes and sets the transaction auxiliary data hash.
 setAuxDataHash :: Transaction -> Transaction
 setAuxDataHash tx =
   tx # _body <<< _auxiliaryDataHash .~
     (hashAuxiliaryData <$> (unwrap tx).auxiliaryData)
 
+-- | Removes existing vkey witnesses and signs the transaction.
 reSignTransaction :: Transaction -> Contract Transaction
 reSignTransaction tx = signTransaction (tx # _witnessSet <<< _vkeys .~ mempty)

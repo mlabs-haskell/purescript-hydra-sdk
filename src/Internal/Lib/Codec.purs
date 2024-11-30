@@ -1,3 +1,5 @@
+-- | This module provides bidirectional JSON codecs for commonly used
+-- | types in the SDK along with useful helper functions.
 module HydraSdk.Internal.Lib.Codec
   ( class FromVariantGeneric
   , class ToVariantGeneric
@@ -203,16 +205,21 @@ fromCaJsonDecodeError = case _ of
   CA.Named name err -> A.Named name $ fromCaJsonDecodeError err
   CA.MissingValue -> A.MissingValue
 
+-- | Attempts to decode the given JSON file using the specified codec.
 caDecodeFile :: forall a. CA.JsonCodec a -> FilePath -> Effect (Either CA.JsonDecodeError a)
 caDecodeFile codec =
   map (caDecodeString codec)
     <<< FSSync.readTextFile Encoding.UTF8
 
+-- | Attempts to parse a string as JSON and then decode it using
+-- | the specified codec.
 caDecodeString :: forall a. CA.JsonCodec a -> String -> Either CA.JsonDecodeError a
 caDecodeString codec jsonStr = do
   json <- lmap (const (CA.TypeMismatch "JSON")) $ A.parseJson jsonStr
   CA.decode codec json
 
+-- | Converts the provided value into a JSON string using
+-- | the specified codec. 
 caEncodeString :: forall a. CA.JsonCodec a -> a -> String
 caEncodeString codec = A.stringify <<< CA.encode codec
 

@@ -6,13 +6,6 @@ purs-args := "--stash --censor-lib --censor-codes=ImplicitImport,ImplicitQualifi
 example-docker := example/minimal/docker/cluster/docker-compose.yaml
 example-keys := example/minimal/docker/cluster/keys/
 
-system := $(shell uname -s)
-ifeq (${system},Linux)
-    open-in-browser := xdg-open
-else
-    open-in-browser := open
-endif
-
 requires-nix-shell:
 	@[ "$(IN_NIX_SHELL)" ] || \
 		( echo "The '$(MAKECMDGOALS)' target must be run from inside a nix shell, run 'nix develop' first." \
@@ -30,11 +23,13 @@ format: requires-nix-shell
 repl: requires-nix-shell
 	spago repl
 
-docs:
-	nix build .#docs
-	${open-in-browser} result/generated-docs/html/index.html
+docs: requires-nix-shell
+	mv package.json package.json.old
+	jq 'del(.type)' package.json.old > package.json
+	spago docs --open
+	mv -f package.json.old package.json
 
-build-example:
+build-example: requires-nix-shell
 	cd example/minimal && \
 		spago build --purs-args ${purs-args}
 

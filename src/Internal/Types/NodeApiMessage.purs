@@ -72,6 +72,7 @@ import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
 ----------------------------------------------------------------------
 -- Incoming messages
 
+-- | Represents incoming messages from the hydra-node API WebSocket server.
 -- TODO: add missing variants: PostTxOnChainFailed, CommandFailed, IgnoredHeadInitializing
 data HydraNodeApi_InMessage
   = Greetings GreetingsMessage
@@ -471,6 +472,8 @@ invalidInputMessageCodec =
 ----------------------------------------------------------------------
 -- Outcoming messages
 
+-- | Represents messages that can be sent to the hydra-node API
+-- | WebSocket server.
 data HydraNodeApi_OutMessage
   = Init
   | Abort

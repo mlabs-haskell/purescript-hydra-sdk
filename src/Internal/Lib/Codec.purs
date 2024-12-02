@@ -98,6 +98,11 @@ import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons) as Row
 import Type.Proxy (Proxy(Proxy))
 
+-- | Builds a flat sum type codec from the provided sum type codec by
+-- | embedding the `"value"` contents during encoding and combining
+-- | them under `"value"` during decoding to make it compatible
+-- | with the Haskell Aeson format.
+-- FIXME: handle all edge cases
 fixTaggedSumCodec :: forall a. CA.JsonCodec a -> CA.JsonCodec a
 fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
   where
@@ -125,6 +130,17 @@ fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
               A.fromObject $ Obj.union valueObj $ Obj.delete "value" obj
           _, _ -> json
 
+-- | Builds a codec for a generic sum type from the provided `Variant` codec,
+-- | where all `Variant` labels must correspond to constructor names. Reduces
+-- | boilerplate compared to the standard method for handling sum types
+-- | but imposes the aforementioned constraint on field names.
+-- |
+-- | The sum type will be encoded as a JSON object of the form:
+-- | `{ "tag": <constructor name>", "value": <value> }`
+-- |
+-- | Applying `fixTaggedSumCodec` to the codec built via `sumGenericCodec`
+-- | flattens the JSON representation by moving all `<value>` fields
+-- | alongside the `"tag"` field if `<value>` is itself an object.
 sumGenericCodec
   :: forall a rep row
    . Generic a rep
@@ -196,6 +212,13 @@ instance
     Generic.Inl x -> toVariantGeneric x
     Generic.Inr x -> toVariantGeneric x
 
+-- | Converts `JsonDecodeError` defined in `Data.Codec.Argonaut` to
+-- | `JsonDecodeError` defined in `Data.Argonaut.Decode.Error`.
+-- | Both types are identical and can be converted without
+-- | any loss of information.
+-- |
+-- | Relevant issue:
+-- | https://github.com/purescript-contrib/purescript-argonaut-codecs/issues/83
 fromCaJsonDecodeError :: CA.JsonDecodeError -> A.JsonDecodeError
 fromCaJsonDecodeError = case _ of
   CA.TypeMismatch type_ -> A.TypeMismatch type_
@@ -244,6 +267,9 @@ cborBytesCodec = wrapIso CborBytes byteArrayCodec
 dataHashCodec :: CA.JsonCodec DataHash
 dataHashCodec = asCborCodec "DataHash"
 
+-- | Bidirectional JSON codec for `DateTime`. Attempts to handle the ambiguity
+-- | in timestamps returned by hydra-node, where some may include nanoseconds
+-- | while others omit fractional seconds entirely, etc.
 dateTimeCodec :: CA.JsonCodec DateTime
 dateTimeCodec =
   CA.prismaticCodec

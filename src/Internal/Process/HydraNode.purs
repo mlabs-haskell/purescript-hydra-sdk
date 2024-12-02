@@ -58,7 +58,7 @@ type HydraNodeStartupParams =
   , peers :: Array HydraHeadPeer
   }
 
--- | Bi-directional JSON codec for `HydraNodeStartupParams`.
+-- | Bidirectional JSON codec for `HydraNodeStartupParams`.
 hydraNodeStartupParamsCodec :: CA.JsonCodec HydraNodeStartupParams
 hydraNodeStartupParamsCodec =
   CA.object "HydraNodeStartupParams" $ CAR.record

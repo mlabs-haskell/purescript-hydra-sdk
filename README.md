@@ -10,6 +10,7 @@ applications.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Compatibility](#compatibility)
 - [Applications](#applications)
 - [Preliminaries](#preliminaries)
 - [Getting Started](#getting-started)
@@ -17,6 +18,12 @@ applications.
 - [Development Workflows](#development-workflows)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+### Compatibility
+
+| hydra-sdk   | hydra-node   | cardano-node |
+| ----------- | ------------ | ------------ |
+| **`0.1.0`** | **`0.19.0`** | **`10.1.2`** |
 
 ### Applications
 

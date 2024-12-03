@@ -11,3 +11,4 @@
 /.psci_modules/
 /.spago/
 /.spago2nix/
+.psc-ide-port

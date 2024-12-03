@@ -41,8 +41,8 @@ docker-cleanup:
 	docker volume rm -f cluster_hydra-persist-a cluster_hydra-persist-b
 
 gen-keys: requires-nix-shell
-	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-a 
-	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-b 
+	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-a
+	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-b
 	@cardano-cli address key-gen \
 		--signing-key-file ${example-keys}/cardano-a.sk \
 		--verification-key-file ${example-keys}/cardano-a.vk

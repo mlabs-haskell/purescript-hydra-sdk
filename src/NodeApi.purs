@@ -1,3 +1,4 @@
+-- | API to comminicate with the Hydra Node via HTTP/WebSockets.
 module HydraSdk.NodeApi
   ( module ExportHttp
   , module ExportWebSocket

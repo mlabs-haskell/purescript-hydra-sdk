@@ -1,3 +1,7 @@
+--| An opinionated interface for managing multiple Hydra application instances,
+--| with each instance running a separate hydra-node process.
+--| Please refer to README.md for more details.
+
 module HydraSdk.Extra.AppManager
   ( module ExportAppManager
   ) where

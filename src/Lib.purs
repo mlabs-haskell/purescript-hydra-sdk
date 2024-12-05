@@ -1,3 +1,4 @@
+-- | Useful stuff for building an application with HydraSdk.
 module HydraSdk.Lib
   ( module ExportAVar
   , module ExportCodec

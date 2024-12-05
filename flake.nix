@@ -56,6 +56,7 @@
             packageLockOnly = true;
             packages = with pkgs; [
               fd
+              jq
               hydra.packages.${system}.hydra-node
               nixpkgs-fmt
               nodePackages.prettier
@@ -73,18 +74,6 @@
         in
         {
           default = (psProjectFor system pkgs).devShell;
-        }
-      );
-
-      packages = perSystem (system:
-        let
-          pkgs = nixpkgsFor system;
-          project = psProjectFor system pkgs;
-        in
-        {
-          docs = project.buildPursDocs {
-            packageName = projectName;
-          };
         }
       );
 

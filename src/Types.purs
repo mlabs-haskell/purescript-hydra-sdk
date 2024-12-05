@@ -1,3 +1,6 @@
+--| Re-exports various Hydra domain-specific types
+--| (such as `HydraHeadStatus` and `HydraNodeApi_InMessage`),
+--| along with other utility types (e.g., `HostPort` and `Network`).
 module HydraSdk.Types
   ( module ExportArgonautJson
   , module ExportCommitRequest

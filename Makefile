@@ -1,16 +1,10 @@
-.PHONY: build, format, repl, docs, build-example, run-example, docker-cleanup
+.PHONY: build, format, repl, docs, build-example, run-example, docker-cleanup, gen-keys
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
 purs-args := "--stash --censor-lib --censor-codes=ImplicitImport,ImplicitQualifiedImport,ImplicitQualifiedImportReExport,UserDefinedWarning"
 example-docker := example/minimal/docker/cluster/docker-compose.yaml
-
-system := $(shell uname -s)
-ifeq (${system},Linux)
-    open-in-browser := xdg-open
-else
-    open-in-browser := open
-endif
+example-keys := example/minimal/docker/cluster/keys/
 
 requires-nix-shell:
 	@[ "$(IN_NIX_SHELL)" ] || \
@@ -29,11 +23,13 @@ format: requires-nix-shell
 repl: requires-nix-shell
 	spago repl
 
-docs:
-	nix build .#docs
-	${open-in-browser} result/generated-docs/html/index.html
+docs: requires-nix-shell
+	mv package.json package.json.old
+	jq 'del(.type)' package.json.old > package.json
+	spago docs --open
+	mv -f package.json.old package.json
 
-build-example:
+build-example: requires-nix-shell
 	cd example/minimal && \
 		spago build --purs-args ${purs-args}
 
@@ -43,3 +39,21 @@ run-example: docker-cleanup
 docker-cleanup:
 	docker compose -f ${example-docker} rm --force --stop
 	docker volume rm -f cluster_hydra-persist-a cluster_hydra-persist-b
+
+gen-keys: requires-nix-shell
+	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-a
+	@hydra-node gen-hydra-key --output-file ${example-keys}/hydra-b
+	@cardano-cli address key-gen \
+		--signing-key-file ${example-keys}/cardano-a.sk \
+		--verification-key-file ${example-keys}/cardano-a.vk
+	@cardano-cli address build \
+		--payment-verification-key-file ${example-keys}/cardano-a.vk \
+		--testnet-magic 1
+	@echo
+	@cardano-cli address key-gen \
+		--signing-key-file ${example-keys}/cardano-b.sk \
+		--verification-key-file ${example-keys}/cardano-b.vk
+	@cardano-cli address build \
+		--payment-verification-key-file ${example-keys}/cardano-b.vk \
+		--testnet-magic 1
+	@echo

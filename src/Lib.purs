@@ -9,9 +9,7 @@ module HydraSdk.Lib
 import HydraSdk.Internal.Lib.AVar (modify) as ExportAVar
 
 import HydraSdk.Internal.Lib.Codec
-  ( class FromVariantGeneric
-  , class ToVariantGeneric
-  , addressCodec
+  ( addressCodec
   , byteArrayCodec
   , caDecodeFile
   , caDecodeString
@@ -22,7 +20,6 @@ import HydraSdk.Internal.Lib.Codec
   , ed25519KeyHashCodec
   , fixTaggedSumCodec
   , fromCaJsonDecodeError
-  , fromVariantGeneric
   , logLevelCodec
   , orefCodec
   , printOref
@@ -30,8 +27,6 @@ import HydraSdk.Internal.Lib.Codec
   , rawBytesCodec
   , readOref
   , scriptHashCodec
-  , sumGenericCodec
-  , toVariantGeneric
   , txCodec
   , txHashCodec
   ) as ExportCodec

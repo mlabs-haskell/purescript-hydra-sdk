@@ -1,9 +1,7 @@
 -- | This module provides bidirectional JSON codecs for commonly used
 -- | types in the SDK along with useful helper functions.
 module HydraSdk.Internal.Lib.Codec
-  ( class FromVariantGeneric
-  , class ToVariantGeneric
-  , addressCodec
+  ( addressCodec
   , byteArrayCodec
   , caDecodeFile
   , caDecodeString
@@ -14,7 +12,6 @@ module HydraSdk.Internal.Lib.Codec
   , ed25519KeyHashCodec
   , fixTaggedSumCodec
   , fromCaJsonDecodeError
-  , fromVariantGeneric
   , logLevelCodec
   , orefCodec
   , printOref
@@ -22,8 +19,6 @@ module HydraSdk.Internal.Lib.Codec
   , rawBytesCodec
   , readOref
   , scriptHashCodec
-  , sumGenericCodec
-  , toVariantGeneric
   , txCodec
   , txHashCodec
   ) where
@@ -46,7 +41,6 @@ import Cardano.Types
 import Cardano.Types.Address (fromBech32, toBech32) as Address
 import Cardano.Types.PublicKey (fromRawBytes, toRawBytes) as PublicKey
 import Contract.CborBytes (cborBytesToHex, hexToCborBytes)
-import Control.Alt ((<|>))
 import Data.Argonaut (Json)
 import Data.Argonaut
   ( JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
@@ -69,34 +63,20 @@ import Data.Codec.Argonaut
 import Data.DateTime (DateTime)
 import Data.Either (Either, hush)
 import Data.Formatter.DateTime (formatDateTime, unformatDateTime)
-import Data.Generic.Rep
-  ( Argument(Argument)
-  , Constructor(Constructor)
-  , NoArguments(NoArguments)
-  , Sum(Inl, Inr)
-  , from
-  , to
-  ) as Generic
-import Data.Generic.Rep (class Generic)
 import Data.Log.Level (LogLevel(Trace, Debug, Info, Warn, Error))
 import Data.Maybe (Maybe(Just, Nothing), fromJust)
 import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
 import Data.String (Pattern(Pattern))
 import Data.String (split, stripSuffix, take) as String
-import Data.Symbol (class IsSymbol)
 import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
-import Data.Variant (Variant)
-import Data.Variant (inj, prj) as Variant
 import Effect (Effect)
 import Foreign.Object (delete, fromHomogeneous, lookup, member, size, union) as Obj
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.FS.Sync (readTextFile) as FSSync
 import Node.Path (FilePath)
 import Partial.Unsafe (unsafePartial)
-import Prim.Row (class Cons) as Row
-import Type.Proxy (Proxy(Proxy))
 
 -- | Builds a flat sum type codec from the provided sum type codec by
 -- | embedding the `"value"` contents during encoding and combining
@@ -129,88 +109,6 @@ fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
             valueJson # A.caseJsonObject json \valueObj ->
               A.fromObject $ Obj.union valueObj $ Obj.delete "value" obj
           _, _ -> json
-
--- | Builds a codec for a generic sum type from the provided `Variant` codec,
--- | where all `Variant` labels must correspond to constructor names. Reduces
--- | boilerplate compared to the standard method for handling sum types
--- | but imposes the aforementioned constraint on field names.
--- |
--- | The sum type will be encoded as a JSON object of the form:
--- | `{ "tag": <constructor name>", "value": <value> }`
--- |
--- | Applying `fixTaggedSumCodec` to the codec built via `sumGenericCodec`
--- | flattens the JSON representation by moving all `<value>` fields
--- | alongside the `"tag"` field if `<value>` is itself an object.
-sumGenericCodec
-  :: forall a rep row
-   . Generic a rep
-  => ToVariantGeneric rep row
-  => FromVariantGeneric row rep
-  => String
-  -> CA.JsonCodec (Variant row)
-  -> CA.JsonCodec a
-sumGenericCodec typeName variantCodec =
-  CA.prismaticCodec typeName (map Generic.to <<< fromVariantGeneric)
-    (toVariantGeneric <<< Generic.from)
-    variantCodec
-
-class FromVariantGeneric row rep where
-  fromVariantGeneric :: Variant row -> Maybe rep
-
-instance
-  ( FromVariantGeneric unionRow aRep
-  , FromVariantGeneric unionRow bRep
-  ) =>
-  FromVariantGeneric unionRow (Generic.Sum aRep bRep) where
-  fromVariantGeneric variant =
-    (Generic.Inl <$> fromVariantGeneric variant)
-      <|> (Generic.Inr <$> fromVariantGeneric variant)
-
-else instance
-  ( Row.Cons constrName Unit rowRest rowFull
-  , IsSymbol constrName
-  ) =>
-  FromVariantGeneric rowFull (Generic.Constructor constrName Generic.NoArguments) where
-  fromVariantGeneric variant =
-    Variant.prj (Proxy :: _ constrName) variant <#> \_ ->
-      Generic.Constructor Generic.NoArguments
-
-else instance
-  ( Row.Cons constrName value rowRest rowFull
-  , IsSymbol constrName
-  ) =>
-  FromVariantGeneric rowFull (Generic.Constructor constrName (Generic.Argument value)) where
-  fromVariantGeneric variant =
-    Variant.prj (Proxy :: _ constrName) variant <#>
-      Generic.Constructor <<< Generic.Argument
-
-class ToVariantGeneric rep row where
-  toVariantGeneric :: rep -> Variant row
-
-instance
-  ( Row.Cons constrName value rowRest rowFull
-  , IsSymbol constrName
-  ) =>
-  ToVariantGeneric (Generic.Constructor constrName (Generic.Argument value)) rowFull where
-  toVariantGeneric (Generic.Constructor (Generic.Argument x)) =
-    Variant.inj (Proxy :: _ constrName) x
-
-instance
-  ( Row.Cons constrName Unit rowRest rowFull
-  , IsSymbol constrName
-  ) =>
-  ToVariantGeneric (Generic.Constructor constrName Generic.NoArguments) rowFull where
-  toVariantGeneric _ =
-    Variant.inj (Proxy :: _ constrName) unit
-
-instance
-  ( ToVariantGeneric aRep unionRow
-  , ToVariantGeneric bRep unionRow
-  ) =>
-  ToVariantGeneric (Generic.Sum aRep bRep) unionRow where
-  toVariantGeneric = case _ of
-    Generic.Inl x -> toVariantGeneric x
-    Generic.Inr x -> toVariantGeneric x
 
 -- | Converts `JsonDecodeError` defined in `Data.Codec.Argonaut` to
 -- | `JsonDecodeError` defined in `Data.Argonaut.Decode.Error`.

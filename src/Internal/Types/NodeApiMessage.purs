@@ -48,21 +48,14 @@ module HydraSdk.Internal.Types.NodeApiMessage
 import Prelude
 
 import Cardano.Types (PublicKey, ScriptHash)
-import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
+import Data.Codec.Argonaut (JsonCodec, JPropCodec, array, int, object, string) as CA
 import Data.Codec.Argonaut.Record (optional, record) as CAR
-import Data.Codec.Argonaut.Variant (variantMatch) as CAV
+import Data.Codec.Argonaut.Sum (sumFlat) as CAS
 import Data.DateTime (DateTime)
-import Data.Either (Either(Left, Right))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
-import HydraSdk.Internal.Lib.Codec
-  ( dateTimeCodec
-  , fixTaggedSumCodec
-  , publicKeyCodec
-  , scriptHashCodec
-  , sumGenericCodec
-  )
+import HydraSdk.Internal.Lib.Codec (dateTimeCodec, publicKeyCodec, scriptHashCodec)
 import HydraSdk.Internal.Types.ArgonautJson (ArgonautJson, argonautJsonCodec)
 import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus, headStatusCodec)
 import HydraSdk.Internal.Types.Snapshot (HydraSnapshot, hydraSnapshotCodec)
@@ -100,26 +93,24 @@ instance Show HydraNodeApi_InMessage where
 
 hydraNodeApiInMessageCodec :: CA.JsonCodec HydraNodeApi_InMessage
 hydraNodeApiInMessageCodec =
-  fixTaggedSumCodec $ sumGenericCodec "HydraNodeApi_InMessage"
-    ( CAV.variantMatch
-        { "Greetings": Right greetingsMessageCodec
-        , "PeerConnected": Right peerConnMessageCodec
-        , "PeerDisconnected": Right peerConnMessageCodec
-        , "PeerHandshakeFailure": Right peerHandshakeFailureMessageCodec
-        , "HeadIsInitializing": Right headInitMessageCodec
-        , "Committed": Right committedMessageCodec
-        , "HeadIsOpen": Right headOpenMessageCodec
-        , "HeadIsClosed": Right headClosedMessageCodec
-        , "HeadIsContested": Right headContestedMessageCodec
-        , "ReadyToFanout": Right readyToFanoutMessageCodec
-        , "HeadIsAborted": Right headAbortedMessageCodec
-        , "HeadIsFinalized": Right headFinalizedMessageCodec
-        , "TxValid": Right txValidMessageCodec
-        , "TxInvalid": Right txInvalidMessageCodec
-        , "SnapshotConfirmed": Right snapshotConfirmedMessageCodec
-        , "InvalidInput": Right invalidInputMessageCodec
-        }
-    )
+  CAS.sumFlat "HydraNodeApi_InMessage"
+    { "Greetings": greetingsMessageCodec
+    , "PeerConnected": peerConnMessageCodec
+    , "PeerDisconnected": peerConnMessageCodec
+    , "PeerHandshakeFailure": peerHandshakeFailureMessageCodec
+    , "HeadIsInitializing": headInitMessageCodec
+    , "Committed": committedMessageCodec
+    , "HeadIsOpen": headOpenMessageCodec
+    , "HeadIsClosed": headClosedMessageCodec
+    , "HeadIsContested": headContestedMessageCodec
+    , "ReadyToFanout": readyToFanoutMessageCodec
+    , "HeadIsAborted": headAbortedMessageCodec
+    , "HeadIsFinalized": headFinalizedMessageCodec
+    , "TxValid": txValidMessageCodec
+    , "TxInvalid": txInvalidMessageCodec
+    , "SnapshotConfirmed": snapshotConfirmedMessageCodec
+    , "InvalidInput": invalidInputMessageCodec
+    }
 
 ----------------------------------------------------------------------
 -- 0. Greetings
@@ -138,9 +129,9 @@ type GreetingsMessage =
   , hydraNodeVersion :: String
   }
 
-greetingsMessageCodec :: CA.JsonCodec GreetingsMessage
+greetingsMessageCodec :: CA.JPropCodec GreetingsMessage
 greetingsMessageCodec =
-  CA.object "GreetingsMessage" $ CAR.record
+  CAR.record
     { me: CA.object "GreetingsMessage:me" $ CAR.record
         { vkey: publicKeyCodec
         }
@@ -162,9 +153,9 @@ type PeerConnMessage =
   , timestamp :: DateTime
   }
 
-peerConnMessageCodec :: CA.JsonCodec PeerConnMessage
+peerConnMessageCodec :: CA.JPropCodec PeerConnMessage
 peerConnMessageCodec =
-  CA.object "PeerConnMessage" $ CAR.record
+  CAR.record
     { peer: CA.string
     , seq: CA.int
     , timestamp: dateTimeCodec
@@ -184,9 +175,9 @@ type PeerHandshakeFailureMessage =
   , timestamp :: DateTime
   }
 
-peerHandshakeFailureMessageCodec :: CA.JsonCodec PeerHandshakeFailureMessage
+peerHandshakeFailureMessageCodec :: CA.JPropCodec PeerHandshakeFailureMessage
 peerHandshakeFailureMessageCodec =
-  CA.object "PeerHandshakeFailureMessage" $ CAR.record
+  CAR.record
     { remoteHost: argonautJsonCodec
     , ourVersion: CA.int
     , theirVersions: CA.array CA.int
@@ -206,9 +197,9 @@ type HeadInitMessage =
   , timestamp :: DateTime
   }
 
-headInitMessageCodec :: CA.JsonCodec HeadInitMessage
+headInitMessageCodec :: CA.JPropCodec HeadInitMessage
 headInitMessageCodec =
-  CA.object "HeadInitMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , parties:
         CA.array $ CA.object "HeadInitMessage:parties" $ CAR.record
@@ -230,9 +221,9 @@ type CommittedMessage =
   , timestamp :: DateTime
   }
 
-committedMessageCodec :: CA.JsonCodec CommittedMessage
+committedMessageCodec :: CA.JPropCodec CommittedMessage
 committedMessageCodec =
-  CA.object "CommittedMessage" $ CAR.record
+  CAR.record
     { party:
         CA.object "CommittedMessage:party" $ CAR.record
           { vkey: publicKeyCodec
@@ -254,9 +245,9 @@ type HeadOpenMessage =
   , timestamp :: DateTime
   }
 
-headOpenMessageCodec :: CA.JsonCodec HeadOpenMessage
+headOpenMessageCodec :: CA.JPropCodec HeadOpenMessage
 headOpenMessageCodec =
-  CA.object "HeadOpenMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
     , seq: CA.int
@@ -276,9 +267,9 @@ type HeadClosedMessage =
   , timestamp :: DateTime
   }
 
-headClosedMessageCodec :: CA.JsonCodec HeadClosedMessage
+headClosedMessageCodec :: CA.JPropCodec HeadClosedMessage
 headClosedMessageCodec =
-  CA.object "HeadClosedMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , snapshotNumber: CA.int
     , contestationDeadline: dateTimeCodec
@@ -301,9 +292,9 @@ type HeadContestedMessage =
   , timestamp :: DateTime
   }
 
-headContestedMessageCodec :: CA.JsonCodec HeadContestedMessage
+headContestedMessageCodec :: CA.JPropCodec HeadContestedMessage
 headContestedMessageCodec =
-  CA.object "HeadContestedMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , snapshotNumber: CA.int
     , contestationDeadline: dateTimeCodec
@@ -322,9 +313,9 @@ type ReadyToFanoutMessage =
   , timestamp :: DateTime
   }
 
-readyToFanoutMessageCodec :: CA.JsonCodec ReadyToFanoutMessage
+readyToFanoutMessageCodec :: CA.JPropCodec ReadyToFanoutMessage
 readyToFanoutMessageCodec =
-  CA.object "ReadyToFanoutMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , seq: CA.int
     , timestamp: dateTimeCodec
@@ -342,9 +333,9 @@ type HeadAbortedMessage =
   , timestamp :: DateTime
   }
 
-headAbortedMessageCodec :: CA.JsonCodec HeadAbortedMessage
+headAbortedMessageCodec :: CA.JPropCodec HeadAbortedMessage
 headAbortedMessageCodec =
-  CA.object "HeadAbortedMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
     , seq: CA.int
@@ -363,9 +354,9 @@ type HeadFinalizedMessage =
   , timestamp :: DateTime
   }
 
-headFinalizedMessageCodec :: CA.JsonCodec HeadFinalizedMessage
+headFinalizedMessageCodec :: CA.JPropCodec HeadFinalizedMessage
 headFinalizedMessageCodec =
-  CA.object "HeadFinalizedMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
     , seq: CA.int
@@ -385,9 +376,9 @@ type TxValidMessage =
   , timestamp :: DateTime
   }
 
-txValidMessageCodec :: CA.JsonCodec TxValidMessage
+txValidMessageCodec :: CA.JPropCodec TxValidMessage
 txValidMessageCodec =
-  CA.object "TxValidMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , transaction: hydraTxCodec
     , seq: CA.int
@@ -412,9 +403,9 @@ type TxInvalidMessage =
   , timestamp :: DateTime
   }
 
-txInvalidMessageCodec :: CA.JsonCodec TxInvalidMessage
+txInvalidMessageCodec :: CA.JPropCodec TxInvalidMessage
 txInvalidMessageCodec =
-  CA.object "TxInvalidMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
     , transaction: hydraTxCodec
@@ -438,9 +429,9 @@ type SnapshotConfirmedMessage =
   , timestamp :: DateTime
   }
 
-snapshotConfirmedMessageCodec :: CA.JsonCodec SnapshotConfirmedMessage
+snapshotConfirmedMessageCodec :: CA.JPropCodec SnapshotConfirmedMessage
 snapshotConfirmedMessageCodec =
-  CA.object "SnapshotConfirmedMessage" $ CAR.record
+  CAR.record
     { headId: scriptHashCodec
     , snapshot: hydraSnapshotCodec
     , seq: CA.int
@@ -460,9 +451,9 @@ type InvalidInputMessage =
   , timestamp :: DateTime
   }
 
-invalidInputMessageCodec :: CA.JsonCodec InvalidInputMessage
+invalidInputMessageCodec :: CA.JPropCodec InvalidInputMessage
 invalidInputMessageCodec =
-  CA.object "InvalidInputMessage" $ CAR.record
+  CAR.record
     { reason: CA.string
     , input: CA.string
     , seq: CA.int
@@ -490,23 +481,21 @@ instance Show HydraNodeApi_OutMessage where
 
 hydraNodeApiOutMessageCodec :: CA.JsonCodec HydraNodeApi_OutMessage
 hydraNodeApiOutMessageCodec =
-  fixTaggedSumCodec $ sumGenericCodec "HydraNodeApi_OutMessage"
-    ( CAV.variantMatch
-        { "Init": Left unit
-        , "Abort": Left unit
-        , "NewTx": Right newTxMessageCodec
-        , "Close": Left unit
-        , "Contest": Left unit
-        , "Fanout": Left unit
-        }
-    )
+  CAS.sumFlat "HydraNodeApi_OutMessage"
+    { "Init": unit
+    , "Abort": unit
+    , "NewTx": newTxMessageCodec
+    , "Close": unit
+    , "Contest": unit
+    , "Fanout": unit
+    }
 
 type NewTxMessage =
   { transaction :: HydraTx
   }
 
-newTxMessageCodec :: CA.JsonCodec NewTxMessage
+newTxMessageCodec :: CA.JPropCodec NewTxMessage
 newTxMessageCodec =
-  CA.object "NewTxMessage" $ CAR.record
+  CAR.record
     { transaction: hydraTxCodec
     }

@@ -602,6 +602,18 @@ let additions =
         , repo = "https://github.com/passy/purescript-errors.git"
         , version = "670485beb1e026f77d52ca58ce10c145d96c11ba"
         }
+      , codec-argonaut =
+        { dependencies =
+          [ "argonaut-core"
+          , "codec"
+          , "foreign-object"
+          , "ordered-collections"
+          , "type-equality"
+          , "variant"
+          ]
+        , repo = "https://github.com/errfrom/purescript-codec-argonaut.git"
+        , version = "b623366e2bf297dbbc78d643c36214ab109d9d09"
+        }
       }
 
 in (upstream // additions)

@@ -241,13 +241,15 @@ dateTimeCodec :: CA.JsonCodec DateTime
 dateTimeCodec =
   CA.prismaticCodec
     "DateTime"
-    ( \str ->
-        case String.split (Pattern ".") <$> String.stripSuffix (Pattern "Z") str of
-          Just [ x, nsec ] ->
-            -- truncate to milliseconds
-            hush $ unformatDateTime formatter $ x <> "." <> String.take 3 nsec <> "Z"
-          _ ->
-            Nothing
+    ( \str -> do
+        strFixed <- String.stripSuffix (Pattern "Z") str <#> \strNoTimezone ->
+          case String.split (Pattern ".") strNoTimezone of
+            [ a, b ] ->
+              -- truncate to milliseconds
+              a <> "." <> String.take 3 (b <> "00") <> "Z"
+            _ ->
+              strNoTimezone <> ".000Z"
+        hush $ unformatDateTime formatter strFixed
     )
     (unsafePartial fromJust <<< hush <<< formatDateTime formatter)
     CA.string

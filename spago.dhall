@@ -38,6 +38,7 @@
   , "plutus-types"
   , "prelude"
   , "profunctor"
+  , "profunctor-lenses"
   , "quickcheck"
   , "safely"
   , "strings"

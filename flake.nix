@@ -8,9 +8,18 @@
 
   inputs = {
     nixpkgs.follows = "ctl/nixpkgs";
-    cardano-node.url = "github:input-output-hk/cardano-node/9.2.0";
-    ctl.url = "github:Plutonomicon/cardano-transaction-lib/4bae6a202f3c77952d6067f94d8ae63cb74f3c0f";
-    ctl.inputs.cardano-node.follows = "cardano-node";
+    cardano-node.url = "github:input-output-hk/cardano-node/10.1.2";
+    cardano-configurations = {
+      url = "github:input-output-hk/cardano-configurations?rev=3c5f35bda1b8fd29ab310ad222403a9167f512de";
+      flake = false;
+    };
+    ctl = {
+      url = "github:Plutonomicon/cardano-transaction-lib/4bae6a202f3c77952d6067f94d8ae63cb74f3c0f";
+      inputs = {
+        cardano-node.follows = "cardano-node";
+        cardano-configurations.follows = "cardano-configurations";
+      };
+    };
     hydra.url = "github:input-output-hk/hydra/0.19.0";
   };
 

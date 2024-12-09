@@ -3,11 +3,11 @@
     "CHaP": {
       "flake": false,
       "locked": {
-        "lastModified": 1725978043,
-        "narHash": "sha256-3AwgQ308g74rISxUlbzQRX3At0trVoH836vBwkcFFYg=",
+        "lastModified": 1730295876,
+        "narHash": "sha256-ijnHTQ6eKIQ9FpEqDKt6c7vuFYN8aOBDhonp67utx2s=",
         "owner": "intersectmbo",
         "repo": "cardano-haskell-packages",
-        "rev": "ce5ba82d474225506523e66a4050718de7e2b3fe",
+        "rev": "25591f43ab943d5a070db5e8a2b9ff3a499d4d92",
         "type": "github"
       },
       "original": {
@@ -2769,17 +2769,17 @@
     "cardano-configurations": {
       "flake": false,
       "locked": {
-        "lastModified": 1721870874,
-        "narHash": "sha256-qiReN+xxtbb4kEfdIWbBcqcJpPGD8he0p/TVD7U3CqM=",
+        "lastModified": 1729560529,
+        "narHash": "sha256-1fVQI2D0Znv/wAlsm2Vwp+C/NWwtg6gPSulfdP/tcho=",
         "owner": "input-output-hk",
         "repo": "cardano-configurations",
-        "rev": "7969a73e5c7ee1f3b2a40274b34191fdd8de170b",
+        "rev": "3c5f35bda1b8fd29ab310ad222403a9167f512de",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
         "repo": "cardano-configurations",
-        "rev": "7969a73e5c7ee1f3b2a40274b34191fdd8de170b",
+        "rev": "3c5f35bda1b8fd29ab310ad222403a9167f512de",
         "type": "github"
       }
     },
@@ -3105,16 +3105,16 @@
         "utils": "utils_2"
       },
       "locked": {
-        "lastModified": 1726677789,
-        "narHash": "sha256-utAO4ZP9EAW4LdMT/hdMoykwT/h9gizoVvCbmYfAZSQ=",
+        "lastModified": 1730468447,
+        "narHash": "sha256-yNEv7MQEcOPY9I9k9RCzeMfJY6gzuGc7K53GKNHs6v8=",
         "owner": "input-output-hk",
         "repo": "cardano-node",
-        "rev": "341ea87ba3b4936188f8c2d4f09bbf1976a7926e",
+        "rev": "01bda2e2cb0a70cd95067d696dbb44665f1d680a",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "9.2.0",
+        "ref": "10.1.2",
         "repo": "cardano-node",
         "type": "github"
       }
@@ -3974,7 +3974,9 @@
       "inputs": {
         "CHaP": "CHaP_2",
         "blockfrost": "blockfrost",
-        "cardano-configurations": "cardano-configurations",
+        "cardano-configurations": [
+          "cardano-configurations"
+        ],
         "cardano-nix": "cardano-nix",
         "cardano-node": [
           "cardano-node"
@@ -9842,11 +9844,11 @@
     "hackageNix": {
       "flake": false,
       "locked": {
-        "lastModified": 1725928375,
-        "narHash": "sha256-XO/6kJ77bR99bAuRGr9PleQX75vde5CbSU+6Xf3e8NQ=",
+        "lastModified": 1729039425,
+        "narHash": "sha256-sIglYcw8Dacj4n0bRlUWo+NLkDMcVi6vtmKvUyG+ZrQ=",
         "owner": "input-output-hk",
         "repo": "hackage.nix",
-        "rev": "68cfb288b958e9d7a1329df614684132f44bd2b3",
+        "rev": "6dc43e5e01f113ce151056a8f94bce7bb2f13eb9",
         "type": "github"
       },
       "original": {
@@ -10412,7 +10414,7 @@
         "hls-2.6": "hls-2.6_2",
         "hls-2.7": "hls-2.7_2",
         "hls-2.8": "hls-2.8_2",
-        "hls-2.9": "hls-2.9_2",
+        "hls-2.9": "hls-2.9",
         "hpc-coveralls": "hpc-coveralls_10",
         "hydra": "hydra_12",
         "iserv-proxy": "iserv-proxy_6",
@@ -10702,7 +10704,6 @@
         "hls-2.6": "hls-2.6",
         "hls-2.7": "hls-2.7",
         "hls-2.8": "hls-2.8",
-        "hls-2.9": "hls-2.9",
         "hpc-coveralls": "hpc-coveralls",
         "hydra": "hydra",
         "iserv-proxy": "iserv-proxy",
@@ -10732,6 +10733,7 @@
       "original": {
         "owner": "input-output-hk",
         "repo": "haskell.nix",
+        "rev": "cb139fa956158397aa398186bb32dd26f7318784",
         "type": "github"
       }
     },
@@ -11053,7 +11055,7 @@
         "hls-2.6": "hls-2.6_4",
         "hls-2.7": "hls-2.7_4",
         "hls-2.8": "hls-2.8_4",
-        "hls-2.9": "hls-2.9_3",
+        "hls-2.9": "hls-2.9_2",
         "hpc-coveralls": "hpc-coveralls_12",
         "hydra": "hydra_15",
         "iserv-proxy": "iserv-proxy_8",
@@ -12242,23 +12244,6 @@
       "flake": false,
       "locked": {
         "lastModified": 1718469202,
-        "narHash": "sha256-qnDx8Pk0UxtoPr7BimEsAZh9g2WuTuMB/kGqnmdryKs=",
-        "owner": "haskell",
-        "repo": "haskell-language-server",
-        "rev": "0c1817cb2babef0765e4e72dd297c013e8e3d12b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "haskell",
-        "ref": "2.9.0.1",
-        "repo": "haskell-language-server",
-        "type": "github"
-      }
-    },
-    "hls-2.9_2": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1718469202,
         "narHash": "sha256-THXSz+iwB1yQQsr/PY151+2GvtoJnTIB2pIQ4OzfjD4=",
         "owner": "haskell",
         "repo": "haskell-language-server",
@@ -12272,7 +12257,7 @@
         "type": "github"
       }
     },
-    "hls-2.9_3": {
+    "hls-2.9_2": {
       "flake": false,
       "locked": {
         "lastModified": 1718469202,
@@ -12630,11 +12615,11 @@
         "nixpkgs-latest": "nixpkgs-latest_2"
       },
       "locked": {
-        "lastModified": 1727798823,
-        "narHash": "sha256-01iwoIFU1bwrFUzI2UtCa3PEK3NdydMR+P7OPdo41rg=",
+        "lastModified": 1729265327,
+        "narHash": "sha256-Qjfsk4piLMKjGnel0BkzTG1TU2mHqBAh3Mq72IcfMPQ=",
         "ref": "refs/heads/dshuiski/delegate-groups",
-        "rev": "c8cbab19b5f828219c43d21c2624cadc1bc3c14b",
-        "revCount": 54,
+        "rev": "0c3244971f0119926827934cfc0d6dac1d397e5f",
+        "revCount": 55,
         "type": "git",
         "url": "file:///home/errfrom/mlabs/hydra-auction-onchain"
       },
@@ -13882,11 +13867,11 @@
         "sodium": "sodium"
       },
       "locked": {
-        "lastModified": 1721825987,
-        "narHash": "sha256-PPcma4tjozwXJAWf+YtHUQUulmxwulVlwSQzKItx/n8=",
+        "lastModified": 1728687575,
+        "narHash": "sha256-38uD8SqT557eh5yyRYuthKm1yTtiWzAN0FH7L/01QKM=",
         "owner": "input-output-hk",
         "repo": "iohk-nix",
-        "rev": "eb61f2c14e1f610ec59117ad40f8690cddbf80cb",
+        "rev": "86c2bd46e8a08f62ea38ffe77cb4e9c337b42217",
         "type": "github"
       },
       "original": {
@@ -24379,6 +24364,7 @@
     },
     "root": {
       "inputs": {
+        "cardano-configurations": "cardano-configurations",
         "cardano-node": "cardano-node",
         "ctl": "ctl",
         "hydra": "hydra_13",

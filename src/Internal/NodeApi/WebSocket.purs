@@ -12,15 +12,15 @@ module HydraSdk.Internal.NodeApi.WebSocket
 import Prelude
 
 import Cardano.Types (Transaction)
-import Contract.Log (logInfo', logTrace')
 import Control.Monad.Logger.Class (class MonadLogger)
 import Control.Monad.Rec.Class (class MonadRec)
 import Data.Either (Either)
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
+import HydraSdk.Internal.Lib.Logger (logInfo, logTrace)
 import HydraSdk.Internal.Lib.Retry (retry)
-import HydraSdk.Internal.Lib.WebSocket (Url, WebSocket, mkWebSocket)
+import HydraSdk.Internal.Lib.WebSocket (WebSocket, WebSocketUrl, mkWebSocket)
 import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed))
 import HydraSdk.Internal.Types.NodeApiMessage
   ( HydraNodeApi_InMessage
@@ -66,7 +66,7 @@ type HydraNodeApiHandlers (m :: Type -> Type) =
 -- | `txRetryStrategies`: Retry strategies for transactions that may be silently
 -- |  dropped by the cardano-node due to limitations of the hydra-node.
 type HydraNodeApiWebSocketBuilder (m :: Type -> Type) =
-  { url :: Url
+  { url :: WebSocketUrl
   , runM :: m Unit -> Effect Unit
   , handlers :: HydraNodeApiHandlers m
   , txRetryStrategies ::
@@ -155,10 +155,10 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
       , fanout: ws.send Fanout
       }
   ws.onConnect do
-    logInfo' $ "Connected to hydra-node WebSocket server (" <> url <> ")."
+    logInfo $ "Connected to hydra-node WebSocket server (" <> url <> ")."
     handlers.connectHandler hydraNodeApiWs
   ws.onError (handlers.errorHandler hydraNodeApiWs)
   ws.onMessage \message -> do
-    logTrace' $ "Received typed message from hydra-node WebSocket: " <> show message
+    logTrace $ "Received typed message from hydra-node WebSocket: " <> show message
     handlers.messageHandler hydraNodeApiWs message
   pure hydraNodeApiWs

@@ -4,13 +4,17 @@ module HydraSdk.Example.Minimal.Main
 
 import Prelude
 
-import Cardano.AsCbor (encodeCbor)
+import Cardano.AsCbor (decodeCbor, encodeCbor)
 import Cardano.Types (Language(PlutusV2), Transaction)
+import Cardano.Types.AuxiliaryData (hashAuxiliaryData)
+import Cardano.Types.Transaction (_body, _witnessSet)
+import Cardano.Types.TransactionBody (_auxiliaryDataHash)
+import Cardano.Types.TransactionWitnessSet (_vkeys)
 import Contract.CborBytes (cborBytesToHex)
 import Contract.Log (logError', logInfo', logTrace', logWarn')
 import Contract.Monad (Contract, ContractEnv, stopContractEnv)
 import Contract.ProtocolParameters (getProtocolParameters)
-import Contract.Transaction (submit)
+import Contract.Transaction (signTransaction, submit)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (ask)
 import Ctl.Internal.Transaction (setScriptDataHash)
@@ -18,13 +22,13 @@ import Data.Argonaut (stringifyWithIndent)
 import Data.Array (length) as Array
 import Data.Codec.Argonaut (encode) as CA
 import Data.Either (Either(Left, Right))
+import Data.Lens ((.~))
 import Data.Log.Level (LogLevel(Info, Error))
 import Data.Map (empty, filterKeys, fromFoldable) as Map
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(SIGINT, SIGTERM))
 import Data.Traversable (traverse_)
-import Data.UInt (fromInt) as UInt
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, runAff_)
 import Effect.Aff.Class (liftAff)
@@ -46,7 +50,7 @@ import HydraSdk.Example.Minimal.App
 import HydraSdk.Example.Minimal.App (setHeadStatus, setUtxoSnapshot) as App
 import HydraSdk.Example.Minimal.Config (configFromArgv)
 import HydraSdk.Example.Minimal.Contract.L2 (placeArbitraryDatumL2)
-import HydraSdk.Lib (log', reSignTransaction, setAuxDataHash)
+import HydraSdk.Lib (log')
 import HydraSdk.NodeApi
   ( HydraNodeApiWebSocket
   , HydraTxRetryStrategy(RetryTxWithParams, DontRetryTx)
@@ -77,13 +81,11 @@ import HydraSdk.Types
   , hydraSnapshotCodec
   , mkSimpleCommitRequest
   , printHeadStatus
-  , printHost
   , printHostPort
   , toUtxoMap
   )
 import Node.ChildProcess (ChildProcess, kill)
 import Node.Process (onSignal, onUncaughtException)
-import URI.Port (toInt) as Port
 
 type AppHandle =
   { cleanupHandler :: Effect Unit
@@ -168,20 +170,19 @@ messageHandler ws =
           { commitUtxo, config: { hydraNodeStartupParams: { hydraNodeApiAddress } } } <- ask
           let
             payload = mkSimpleCommitRequest $ Map.fromFoldable [ commitUtxo ]
-            serverConfig =
-              { port: UInt.fromInt $ Port.toInt hydraNodeApiAddress.port
-              , host: printHost hydraNodeApiAddress
-              , secure: false
-              , path: Nothing
-              }
-          liftAff (commitRequest serverConfig payload) >>= case _ of
+            hydraNodeHttpUrl = "http://" <> printHostPort hydraNodeApiAddress
+          liftAff (commitRequest hydraNodeHttpUrl payload) >>= case _ of
             Left httpErr ->
               throwError $ error $ "Commit request failed with error: "
                 <> show httpErr
-            Right { cborHex: commitTx } -> do
-              txHash <- runContractInApp $ submit =<< fixCommitTx commitTx
-              logInfo' $ "Submitted Commit transaction: " <> cborBytesToHex
-                (encodeCbor txHash)
+            Right { cborHex } -> do
+              case decodeCbor cborHex of
+                Just commitTx -> do
+                  txHash <- runContractInApp $ submit =<< fixCommitTx commitTx
+                  logInfo' $ "Submitted Commit transaction: " <> cborBytesToHex
+                    (encodeCbor txHash)
+                Nothing ->
+                  throwError $ error "Could not decode CommitTx CBOR"
         HeadIsOpen { headId, utxo } -> do
           setHeadStatus HeadStatus_Open
           logInfo' $ "Head ID: " <> cborBytesToHex (encodeCbor headId)
@@ -215,6 +216,16 @@ messageHandler ws =
 fixCommitTx :: Transaction -> Contract Transaction
 fixCommitTx = reSignTransaction <=< fixScriptIntegrityHash <<< setAuxDataHash
   where
+  -- | Computes and sets the transaction auxiliary data hash.
+  setAuxDataHash :: Transaction -> Transaction
+  setAuxDataHash tx =
+    tx # _body <<< _auxiliaryDataHash .~
+      (hashAuxiliaryData <$> (unwrap tx).auxiliaryData)
+
+  -- | Removes existing vkey witnesses and signs the transaction.
+  reSignTransaction :: Transaction -> Contract Transaction
+  reSignTransaction tx = signTransaction (tx # _witnessSet <<< _vkeys .~ mempty)
+
   fixScriptIntegrityHash :: Transaction -> Contract Transaction
   fixScriptIntegrityHash tx = do
     pparams <- unwrap <$> getProtocolParameters

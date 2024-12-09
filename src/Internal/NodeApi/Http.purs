@@ -6,15 +6,13 @@ module HydraSdk.Internal.NodeApi.Http
 
 import Prelude
 
-import Contract.Config (ServerConfig)
-import Ctl.Internal.Helpers ((<</>>))
-import Ctl.Internal.ServerConfig (mkHttpUrl)
 import Data.Codec.Argonaut (encode) as CA
 import Data.Either (Either)
 import Data.Maybe (Maybe(Just))
 import Effect.Aff (Aff)
 import HydraSdk.Internal.Http.Error (HttpError)
 import HydraSdk.Internal.Http.Utils (handleResponse, postRequest)
+import HydraSdk.Internal.Lib.Misc (concatPathSegments)
 import HydraSdk.Internal.Types.CommitRequest
   ( HydraCommitRequest(SimpleCommitRequest, FullCommitRequest)
   , hydraFullCommitRequestCodec
@@ -35,11 +33,11 @@ import HydraSdk.Internal.Types.UtxoMap (hydraUtxoMapCodec)
 -- |
 -- | For details on the motivation behind blueprint transactions, see this discussion: 
 -- | https://github.com/cardano-scaling/hydra/discussions/1337
-commitRequest :: ServerConfig -> HydraCommitRequest -> Aff (Either HttpError HydraTx)
-commitRequest serverConfig req =
+commitRequest :: String -> HydraCommitRequest -> Aff (Either HttpError HydraTx)
+commitRequest baseUrl req =
   handleResponse hydraTxCodec <$>
     postRequest
-      { url: mkHttpUrl serverConfig <</>> "commit"
+      { url: concatPathSegments baseUrl "commit"
       , content:
           Just $ case req of
             SimpleCommitRequest utxoMap ->

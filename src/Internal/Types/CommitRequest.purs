@@ -8,8 +8,7 @@ module HydraSdk.Internal.Types.CommitRequest
 
 import Prelude
 
-import Contract.Transaction (Transaction)
-import Contract.Utxos (UtxoMap)
+import Cardano.Types (Transaction, UtxoMap)
 import Data.Argonaut (class EncodeJson)
 import Data.Codec.Argonaut (JsonCodec, encode, object) as CA
 import Data.Codec.Argonaut.Record (record) as CAR

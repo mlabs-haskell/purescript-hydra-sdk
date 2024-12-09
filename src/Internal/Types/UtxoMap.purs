@@ -19,20 +19,18 @@ import Cardano.Types
   , DataHash
   , Language(PlutusV1, PlutusV2, PlutusV3)
   , OutputDatum(OutputDatum, OutputDatumHash)
+  , PlutusData(Constr, Map, List, Integer, Bytes)
   , PlutusScript(PlutusScript)
   , ScriptRef(NativeScriptRef, PlutusScriptRef)
   , TransactionInput
   , TransactionOutput(TransactionOutput)
+  , UtxoMap
   , Value(Value)
   )
 import Cardano.Types.AssetName (unAssetName)
 import Cardano.Types.BigNum (fromBigInt, toBigInt) as BigNum
 import Cardano.Types.DataHash (hashPlutusData)
 import Cardano.Types.OutputDatum (outputDatumDataHash, outputDatumDatum)
-import Contract.CborBytes (cborBytesToHex)
-import Contract.PlutusData (PlutusData(Constr, Map, List, Integer, Bytes))
-import Contract.Prim.ByteArray (byteArrayToHex, hexToByteArray)
-import Contract.Utxos (UtxoMap)
 import Control.Alt ((<|>))
 import Control.Monad.Maybe.Trans (MaybeT(MaybeT), runMaybeT)
 import Control.Monad.Trans.Class (lift)
@@ -53,6 +51,7 @@ import Data.Argonaut
 import Data.Array ((:))
 import Data.Bifunctor (bimap, lmap)
 import Data.Bitraversable (bitraverse)
+import Data.ByteArray (byteArrayToHex, hexToByteArray)
 import Data.Codec.Argonaut (JsonCodec, decode, encode, json, object, prismaticCodec) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Generic (nullarySum) as CAG
@@ -74,6 +73,7 @@ import HydraSdk.Internal.Lib.Codec
   , printOref
   , readOref
   )
+import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 import JS.BigInt (BigInt)
 import JS.BigInt (fromNumber, toNumber) as BigInt
 

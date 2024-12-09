@@ -40,7 +40,6 @@ import Cardano.Types
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
 import Cardano.Types.PublicKey (fromRawBytes, toRawBytes) as PublicKey
-import Contract.CborBytes (cborBytesToHex, hexToCborBytes)
 import Data.Argonaut (Json)
 import Data.Argonaut
   ( JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
@@ -73,6 +72,7 @@ import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
 import Effect (Effect)
 import Foreign.Object (delete, fromHomogeneous, lookup, member, size, union) as Obj
+import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.FS.Sync (readTextFile) as FSSync
 import Node.Path (FilePath)
@@ -234,7 +234,7 @@ readOref :: String -> Maybe TransactionInput
 readOref str =
   case String.split (Pattern "#") str of
     [ txHashStr, idx ]
-      | Just transactionId <- decodeCbor =<< hexToCborBytes txHashStr
+      | Just transactionId <- decodeCbor <<< wrap =<< hexToByteArray txHashStr
       , Just index <- UInt.fromString idx ->
           Just $ wrap { transactionId, index }
     _ ->

@@ -7,11 +7,11 @@ module HydraSdk.Internal.Http.Utils
 import Prelude
 
 import Affjax (Error, Response, URL, defaultRequest) as Affjax
+import Affjax.Node (request) as Affjax
 import Affjax.RequestBody (RequestBody(Json)) as Affjax
 import Affjax.RequestHeader (RequestHeader) as Affjax
 import Affjax.ResponseFormat (string) as Affjax.ResponseFormat
 import Affjax.StatusCode (StatusCode(StatusCode)) as Affjax
-import Ctl.Internal.Affjax (request) as Affjax
 import Data.Argonaut (Json)
 import Data.Bifunctor (lmap)
 import Data.Codec.Argonaut (JsonCodec) as CA

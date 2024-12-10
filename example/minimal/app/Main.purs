@@ -59,14 +59,7 @@ import HydraSdk.NodeApi
   )
 import HydraSdk.Process (spawnHydraNode)
 import HydraSdk.Types
-  ( HydraHeadStatus
-      ( HeadStatus_Idle
-      , HeadStatus_Initializing
-      , HeadStatus_Open
-      , HeadStatus_Closed
-      , HeadStatus_FanoutPossible
-      , HeadStatus_Final
-      )
+  ( HydraHeadStatus(HeadStatus_Idle, HeadStatus_Closed)
   , HydraNodeApi_InMessage
       ( Greetings
       , HeadIsInitializing
@@ -80,7 +73,6 @@ import HydraSdk.Types
   , HydraSnapshot(HydraSnapshot)
   , hydraSnapshotCodec
   , mkSimpleCommitRequest
-  , printHeadStatus
   , printHostPort
   , toUtxoMap
   )
@@ -121,6 +113,7 @@ startDelegateServer state logger = do
             , handlers:
                 { connectHandler: const (pure unit)
                 , messageHandler: \ws -> messageHandler ws
+                , headStatusHandler: Just App.setHeadStatus
                 , errorHandler: \_ws err ->
                     logError' $ "hydra-node API WebSocket error: " <> show err
                 }
@@ -162,11 +155,10 @@ messageHandler ws =
     Left _rawMessage -> pure unit
     Right message ->
       case message of
-        Greetings { headStatus } -> do
-          setHeadStatus headStatus
-          when (headStatus == HeadStatus_Idle) $ liftEffect ws.initHead
+        Greetings { headStatus } ->
+          when (headStatus == HeadStatus_Idle) $
+            liftEffect ws.initHead
         HeadIsInitializing _ -> do
-          setHeadStatus HeadStatus_Initializing
           { commitUtxo, config: { hydraNodeStartupParams: { hydraNodeApiAddress } } } <- ask
           let
             payload = mkSimpleCommitRequest $ Map.fromFoldable [ commitUtxo ]
@@ -184,7 +176,6 @@ messageHandler ws =
                 Nothing ->
                   throwError $ error "Could not decode CommitTx CBOR"
         HeadIsOpen { headId, utxo } -> do
-          setHeadStatus HeadStatus_Open
           logInfo' $ "Head ID: " <> cborBytesToHex (encodeCbor headId)
           setUtxoSnapshot $ HydraSnapshot
             { snapshotNumber: zero
@@ -198,17 +189,13 @@ messageHandler ws =
           when ((unwrap snapshot).snapshotNumber > Array.length peers) do
             logInfo' "All Head participants must have advanced the L2 state. Closing Head..."
             liftEffect ws.closeHead
-        HeadIsClosed { snapshotNumber } -> do
-          -- TODO: set head status implicitly
-          setHeadStatus HeadStatus_Closed
+        HeadIsClosed { snapshotNumber } ->
           contestClosureIfNeeded ws snapshotNumber
         HeadIsContested { snapshotNumber } ->
           contestClosureIfNeeded ws snapshotNumber
-        ReadyToFanout _ -> do
-          setHeadStatus HeadStatus_FanoutPossible
+        ReadyToFanout _ ->
           liftEffect ws.fanout
-        HeadIsFinalized _ -> do
-          setHeadStatus HeadStatus_Final
+        HeadIsFinalized _ ->
           -- TODO: output fanout tx hash
           throwError $ error "SUCCESS: Head finalized, Funds transfered to L1 - Exiting..."
         _ -> pure unit
@@ -245,11 +232,6 @@ contestClosureIfNeeded ws closeSnapshot = do
         <> show localSnapshot
         <> ". Contesting Head closure..."
     liftEffect ws.challengeSnapshot
-
-setHeadStatus :: HydraHeadStatus -> AppM Unit
-setHeadStatus status = do
-  App.setHeadStatus status
-  logInfo' $ "New Head status: " <> printHeadStatus status
 
 setUtxoSnapshot :: HydraSnapshot -> AppM Unit
 setUtxoSnapshot snapshot = do

@@ -43,6 +43,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
   , TxValidMessage
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
+  , nextHeadStatus
   ) where
 
 import Prelude
@@ -53,11 +54,20 @@ import Data.Codec.Argonaut.Record (optional, record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
 import Data.DateTime (DateTime)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(Just, Nothing))
 import Data.Show.Generic (genericShow)
 import HydraSdk.Internal.Lib.Codec (dateTimeCodec, publicKeyCodec, scriptHashCodec)
 import HydraSdk.Internal.Types.ArgonautJson (ArgonautJson, argonautJsonCodec)
-import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus, headStatusCodec)
+import HydraSdk.Internal.Types.HeadStatus
+  ( HydraHeadStatus
+      ( HeadStatus_Initializing
+      , HeadStatus_Open
+      , HeadStatus_Closed
+      , HeadStatus_FanoutPossible
+      , HeadStatus_Final
+      )
+  , headStatusCodec
+  )
 import HydraSdk.Internal.Types.Snapshot (HydraSnapshot, hydraSnapshotCodec)
 import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
 import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
@@ -111,6 +121,20 @@ hydraNodeApiInMessageCodec =
     , "SnapshotConfirmed": snapshotConfirmedMessageCodec
     , "InvalidInput": invalidInputMessageCodec
     }
+
+-- | Determines the new Head status based on the incoming hydra-node API message.
+-- | Returns `Nothing` if the message does not imply a status change.
+nextHeadStatus :: HydraNodeApi_InMessage -> Maybe HydraHeadStatus
+nextHeadStatus =
+  case _ of
+    Greetings { headStatus } -> Just headStatus
+    HeadIsInitializing _ -> Just HeadStatus_Initializing
+    HeadIsOpen _ -> Just HeadStatus_Open
+    HeadIsClosed _ -> Just HeadStatus_Closed
+    ReadyToFanout _ -> Just HeadStatus_FanoutPossible
+    HeadIsAborted _ -> Just HeadStatus_Final
+    HeadIsFinalized _ -> Just HeadStatus_Final
+    _ -> Nothing
 
 ----------------------------------------------------------------------
 -- 0. Greetings

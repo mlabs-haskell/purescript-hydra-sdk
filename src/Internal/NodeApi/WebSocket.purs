@@ -14,19 +14,21 @@ import Prelude
 import Cardano.Types (Transaction)
 import Control.Monad.Logger.Class (class MonadLogger)
 import Control.Monad.Rec.Class (class MonadRec)
-import Data.Either (Either)
+import Data.Either (Either(Right))
+import Data.Maybe (Maybe(Just))
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
 import HydraSdk.Internal.Lib.Logger (logInfo, logTrace)
 import HydraSdk.Internal.Lib.Retry (retry)
 import HydraSdk.Internal.Lib.WebSocket (WebSocket, WebSocketUrl, mkWebSocket)
-import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed))
+import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed), printHeadStatus)
 import HydraSdk.Internal.Types.NodeApiMessage
   ( HydraNodeApi_InMessage
   , HydraNodeApi_OutMessage(Init, Abort, NewTx, Close, Contest, Fanout)
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
+  , nextHeadStatus
   )
 import HydraSdk.Internal.Types.Tx (mkHydraTx)
 
@@ -47,10 +49,15 @@ type HydraNodeApiWebSocket (m :: Type -> Type) =
 -- | `messageHandler`: Attempts to decode incoming messages to
 -- | `HydraNodeApi_InMessage`. On decoding failure, logs the error and passes
 -- | the raw message instead.
+-- |
+-- | `headStatusHandler`: Optional callback executed whenever the Head status
+-- | changes. **NOTE**: If provided, the `headStatusHandler` is guaranteed to be
+-- | called before `messageHandler`.
 type HydraNodeApiHandlers (m :: Type -> Type) =
   { connectHandler :: HydraNodeApiWebSocket m -> m Unit
   , errorHandler :: HydraNodeApiWebSocket m -> String -> m Unit
   , messageHandler :: HydraNodeApiWebSocket m -> Either String HydraNodeApi_InMessage -> m Unit
+  , headStatusHandler :: Maybe (HydraHeadStatus -> m Unit)
   }
 
 -- | Configuration parameters for the hydra-node API WebSocket. 
@@ -160,5 +167,11 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
   ws.onError (handlers.errorHandler hydraNodeApiWs)
   ws.onMessage \message -> do
     logTrace $ "Received typed message from hydra-node WebSocket: " <> show message
+    case handlers.headStatusHandler, nextHeadStatus <$> message of
+      Just statusHandler, Right (Just newStatus) -> do
+        statusHandler newStatus
+        logInfo $ "New Head status: " <> printHeadStatus newStatus
+      _, _ ->
+        pure unit
     handlers.messageHandler hydraNodeApiWs message
   pure hydraNodeApiWs

@@ -107,6 +107,7 @@ import HydraSdk.Internal.Types.NodeApiMessage
   , TxValidMessage
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
+  , nextHeadStatus
   ) as ExportNodeApiMessage
 
 import HydraSdk.Internal.Types.Snapshot

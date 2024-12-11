@@ -4,13 +4,17 @@ module HydraSdk.Example.Minimal.Main
 
 import Prelude
 
-import Cardano.AsCbor (encodeCbor)
+import Cardano.AsCbor (decodeCbor, encodeCbor)
 import Cardano.Types (Language(PlutusV2), Transaction)
+import Cardano.Types.AuxiliaryData (hashAuxiliaryData)
+import Cardano.Types.Transaction (_body, _witnessSet)
+import Cardano.Types.TransactionBody (_auxiliaryDataHash)
+import Cardano.Types.TransactionWitnessSet (_vkeys)
 import Contract.CborBytes (cborBytesToHex)
 import Contract.Log (logError', logInfo', logTrace', logWarn')
 import Contract.Monad (Contract, ContractEnv, stopContractEnv)
 import Contract.ProtocolParameters (getProtocolParameters)
-import Contract.Transaction (submit)
+import Contract.Transaction (signTransaction, submit)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (ask)
 import Ctl.Internal.Transaction (setScriptDataHash)
@@ -18,13 +22,13 @@ import Data.Argonaut (stringifyWithIndent)
 import Data.Array (length) as Array
 import Data.Codec.Argonaut (encode) as CA
 import Data.Either (Either(Left, Right))
+import Data.Lens ((.~))
 import Data.Log.Level (LogLevel(Info, Error))
 import Data.Map (empty, filterKeys, fromFoldable) as Map
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(SIGINT, SIGTERM))
 import Data.Traversable (traverse_)
-import Data.UInt (fromInt) as UInt
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, runAff_)
 import Effect.Aff.Class (liftAff)
@@ -46,7 +50,7 @@ import HydraSdk.Example.Minimal.App
 import HydraSdk.Example.Minimal.App (setHeadStatus, setUtxoSnapshot) as App
 import HydraSdk.Example.Minimal.Config (configFromArgv)
 import HydraSdk.Example.Minimal.Contract.L2 (placeArbitraryDatumL2)
-import HydraSdk.Lib (log', reSignTransaction, setAuxDataHash)
+import HydraSdk.Lib (log')
 import HydraSdk.NodeApi
   ( HydraNodeApiWebSocket
   , HydraTxRetryStrategy(RetryTxWithParams, DontRetryTx)
@@ -55,14 +59,7 @@ import HydraSdk.NodeApi
   )
 import HydraSdk.Process (spawnHydraNode)
 import HydraSdk.Types
-  ( HydraHeadStatus
-      ( HeadStatus_Idle
-      , HeadStatus_Initializing
-      , HeadStatus_Open
-      , HeadStatus_Closed
-      , HeadStatus_FanoutPossible
-      , HeadStatus_Final
-      )
+  ( HydraHeadStatus(HeadStatus_Idle, HeadStatus_Closed)
   , HydraNodeApi_InMessage
       ( Greetings
       , HeadIsInitializing
@@ -76,14 +73,11 @@ import HydraSdk.Types
   , HydraSnapshot(HydraSnapshot)
   , hydraSnapshotCodec
   , mkSimpleCommitRequest
-  , printHeadStatus
-  , printHost
   , printHostPort
   , toUtxoMap
   )
 import Node.ChildProcess (ChildProcess, kill)
 import Node.Process (onSignal, onUncaughtException)
-import URI.Port (toInt) as Port
 
 type AppHandle =
   { cleanupHandler :: Effect Unit
@@ -119,6 +113,7 @@ startDelegateServer state logger = do
             , handlers:
                 { connectHandler: const (pure unit)
                 , messageHandler: \ws -> messageHandler ws
+                , headStatusHandler: Just App.setHeadStatus
                 , errorHandler: \_ws err ->
                     logError' $ "hydra-node API WebSocket error: " <> show err
                 }
@@ -160,30 +155,27 @@ messageHandler ws =
     Left _rawMessage -> pure unit
     Right message ->
       case message of
-        Greetings { headStatus } -> do
-          setHeadStatus headStatus
-          when (headStatus == HeadStatus_Idle) $ liftEffect ws.initHead
+        Greetings { headStatus } ->
+          when (headStatus == HeadStatus_Idle) $
+            liftEffect ws.initHead
         HeadIsInitializing _ -> do
-          setHeadStatus HeadStatus_Initializing
           { commitUtxo, config: { hydraNodeStartupParams: { hydraNodeApiAddress } } } <- ask
           let
             payload = mkSimpleCommitRequest $ Map.fromFoldable [ commitUtxo ]
-            serverConfig =
-              { port: UInt.fromInt $ Port.toInt hydraNodeApiAddress.port
-              , host: printHost hydraNodeApiAddress
-              , secure: false
-              , path: Nothing
-              }
-          liftAff (commitRequest serverConfig payload) >>= case _ of
+            hydraNodeHttpUrl = "http://" <> printHostPort hydraNodeApiAddress
+          liftAff (commitRequest hydraNodeHttpUrl payload) >>= case _ of
             Left httpErr ->
               throwError $ error $ "Commit request failed with error: "
                 <> show httpErr
-            Right { cborHex: commitTx } -> do
-              txHash <- runContractInApp $ submit =<< fixCommitTx commitTx
-              logInfo' $ "Submitted Commit transaction: " <> cborBytesToHex
-                (encodeCbor txHash)
+            Right { cborHex } -> do
+              case decodeCbor cborHex of
+                Just commitTx -> do
+                  txHash <- runContractInApp $ submit =<< fixCommitTx commitTx
+                  logInfo' $ "Submitted Commit transaction: " <> cborBytesToHex
+                    (encodeCbor txHash)
+                Nothing ->
+                  throwError $ error "Could not decode CommitTx CBOR"
         HeadIsOpen { headId, utxo } -> do
-          setHeadStatus HeadStatus_Open
           logInfo' $ "Head ID: " <> cborBytesToHex (encodeCbor headId)
           setUtxoSnapshot $ HydraSnapshot
             { snapshotNumber: zero
@@ -197,17 +189,13 @@ messageHandler ws =
           when ((unwrap snapshot).snapshotNumber > Array.length peers) do
             logInfo' "All Head participants must have advanced the L2 state. Closing Head..."
             liftEffect ws.closeHead
-        HeadIsClosed { snapshotNumber } -> do
-          -- TODO: set head status implicitly
-          setHeadStatus HeadStatus_Closed
+        HeadIsClosed { snapshotNumber } ->
           contestClosureIfNeeded ws snapshotNumber
         HeadIsContested { snapshotNumber } ->
           contestClosureIfNeeded ws snapshotNumber
-        ReadyToFanout _ -> do
-          setHeadStatus HeadStatus_FanoutPossible
+        ReadyToFanout _ ->
           liftEffect ws.fanout
-        HeadIsFinalized _ -> do
-          setHeadStatus HeadStatus_Final
+        HeadIsFinalized _ ->
           -- TODO: output fanout tx hash
           throwError $ error "SUCCESS: Head finalized, Funds transfered to L1 - Exiting..."
         _ -> pure unit
@@ -215,6 +203,16 @@ messageHandler ws =
 fixCommitTx :: Transaction -> Contract Transaction
 fixCommitTx = reSignTransaction <=< fixScriptIntegrityHash <<< setAuxDataHash
   where
+  -- | Computes and sets the transaction auxiliary data hash.
+  setAuxDataHash :: Transaction -> Transaction
+  setAuxDataHash tx =
+    tx # _body <<< _auxiliaryDataHash .~
+      (hashAuxiliaryData <$> (unwrap tx).auxiliaryData)
+
+  -- | Removes existing vkey witnesses and signs the transaction.
+  reSignTransaction :: Transaction -> Contract Transaction
+  reSignTransaction tx = signTransaction (tx # _witnessSet <<< _vkeys .~ mempty)
+
   fixScriptIntegrityHash :: Transaction -> Contract Transaction
   fixScriptIntegrityHash tx = do
     pparams <- unwrap <$> getProtocolParameters
@@ -234,11 +232,6 @@ contestClosureIfNeeded ws closeSnapshot = do
         <> show localSnapshot
         <> ". Contesting Head closure..."
     liftEffect ws.challengeSnapshot
-
-setHeadStatus :: HydraHeadStatus -> AppM Unit
-setHeadStatus status = do
-  App.setHeadStatus status
-  logInfo' $ "New Head status: " <> printHeadStatus status
 
 setUtxoSnapshot :: HydraSnapshot -> AppM Unit
 setUtxoSnapshot snapshot = do

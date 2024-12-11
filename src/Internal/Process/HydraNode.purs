@@ -14,7 +14,6 @@ import Prelude
 
 import Cardano.AsCbor (encodeCbor)
 import Cardano.Types (TransactionHash)
-import Contract.CborBytes (cborBytesToHex)
 import Control.Error.Util (bool)
 import Data.Array (concat, singleton) as Array
 import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
@@ -29,6 +28,7 @@ import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
 import HydraSdk.Internal.Lib.Codec (txHashCodec)
+import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
   , hostPortCodec

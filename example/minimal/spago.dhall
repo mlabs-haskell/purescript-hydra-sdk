@@ -27,7 +27,6 @@
   , "transformers"
   , "tuples"
   , "uint"
-  , "uri"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "app/**/*.purs" ]

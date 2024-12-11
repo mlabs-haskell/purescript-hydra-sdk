@@ -49,7 +49,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Effect.Exception (error, throw)
 import HydraSdk.Example.Minimal.Config (DelegateServerConfig)
-import HydraSdk.Example.Minimal.Contract.PrepareUtxo (prepareUtxoContract)
+import HydraSdk.Example.Minimal.Contract.Collateral (getCollateral)
 import HydraSdk.Lib (modify) as AVar
 import HydraSdk.Types
   ( HydraHeadStatus(HeadStatus_Unknown)
@@ -113,7 +113,7 @@ initApp config@{ hydraNodeStartupParams: { network, cardanoSigningKey }, commitO
   backendParams <- liftEffect mkBackendParams
   contractEnv <- mkContractEnv $ contractParams backendParams
   commitUtxo <- runContractInEnv contractEnv do
-    oref <- maybe prepareUtxoContract pure commitOutRef
+    oref <- maybe getCollateral pure commitOutRef
     resolveCommitOutRef oref
   headStatus <- AVar.new HeadStatus_Unknown
   utxoSnapshot <- AVar.new emptySnapshot

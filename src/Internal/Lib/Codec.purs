@@ -10,7 +10,6 @@ module HydraSdk.Internal.Lib.Codec
   , dataHashCodec
   , dateTimeCodec
   , ed25519KeyHashCodec
-  , fixTaggedSumCodec
   , fromCaJsonDecodeError
   , logLevelCodec
   , orefCodec
@@ -25,6 +24,7 @@ module HydraSdk.Internal.Lib.Codec
 
 import Prelude
 
+import Aeson (parseJsonStringToAeson, stringifyAeson, toStringifiedNumbersJson)
 import Cardano.AsCbor (class AsCbor, decodeCbor, encodeCbor)
 import Cardano.Types
   ( Address
@@ -40,19 +40,13 @@ import Cardano.Types
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
 import Cardano.Types.PublicKey (fromRawBytes, toRawBytes) as PublicKey
-import Data.Argonaut (Json)
 import Data.Argonaut
   ( JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
-  , caseJsonObject
-  , fromObject
-  , parseJson
-  , stringify
   ) as A
 import Data.Bifunctor (lmap)
 import Data.ByteArray (ByteArray, byteArrayToHex, hexToByteArray)
 import Data.Codec.Argonaut
-  ( Codec(Codec)
-  , JsonCodec
+  ( JsonCodec
   , JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
   , decode
   , encode
@@ -68,59 +62,18 @@ import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
 import Data.String (Pattern(Pattern))
 import Data.String (split, stripSuffix, take) as String
-import Data.Tuple (Tuple)
 import Data.UInt (fromString, toString) as UInt
 import Effect (Effect)
-import Foreign.Object (delete, fromHomogeneous, lookup, member, size, union) as Obj
 import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.FS.Sync (readTextFile) as FSSync
 import Node.Path (FilePath)
 import Partial.Unsafe (unsafePartial)
 
--- | Builds a flat sum type codec from the provided sum type codec by
--- | embedding the `"value"` contents during encoding and combining
--- | them under `"value"` during decoding to make it compatible
--- | with the Haskell Aeson format.
--- FIXME: handle all edge cases
-fixTaggedSumCodec :: forall a. CA.JsonCodec a -> CA.JsonCodec a
-fixTaggedSumCodec (CA.Codec dec enc) = CA.Codec decFixed encFixed
-  where
-  decFixed :: Json -> Either CA.JsonDecodeError a
-  decFixed json =
-    dec
-      ( json # A.caseJsonObject json \obj ->
-          case Obj.lookup "tag" obj, Obj.size obj > one of
-            Just tag, true ->
-              A.fromObject $
-                Obj.fromHomogeneous
-                  { tag
-                  , value: A.fromObject (Obj.delete "tag" obj)
-                  }
-            _, _ -> json
-      )
-
-  encFixed :: a -> Tuple Json a
-  encFixed =
-    enc >>> lmap \json ->
-      json # A.caseJsonObject json \obj ->
-        case Obj.member "tag" obj, Obj.lookup "value" obj of
-          true, Just valueJson ->
-            valueJson # A.caseJsonObject json \valueObj ->
-              A.fromObject $ Obj.union valueObj $ Obj.delete "value" obj
-          _, _ -> json
-
--- | Converts `JsonDecodeError` defined in `Data.Codec.Argonaut` to
--- | `JsonDecodeError` defined in `Data.Argonaut.Decode.Error`.
--- | Both types are identical and can be converted without
--- | any loss of information.
--- |
--- | Relevant issue:
--- | https://github.com/purescript-contrib/purescript-argonaut-codecs/issues/83
 fromCaJsonDecodeError :: CA.JsonDecodeError -> A.JsonDecodeError
 fromCaJsonDecodeError = case _ of
   CA.TypeMismatch type_ -> A.TypeMismatch type_
-  CA.UnexpectedValue json -> A.UnexpectedValue json
+  CA.UnexpectedValue json -> A.UnexpectedValue $ toStringifiedNumbersJson json
   CA.AtIndex idx err -> A.AtIndex idx $ fromCaJsonDecodeError err
   CA.AtKey key err -> A.AtKey key $ fromCaJsonDecodeError err
   CA.Named name err -> A.Named name $ fromCaJsonDecodeError err
@@ -136,13 +89,13 @@ caDecodeFile codec =
 -- | the specified codec.
 caDecodeString :: forall a. CA.JsonCodec a -> String -> Either CA.JsonDecodeError a
 caDecodeString codec jsonStr = do
-  json <- lmap (const (CA.TypeMismatch "JSON")) $ A.parseJson jsonStr
+  json <- lmap (const (CA.TypeMismatch "JSON")) $ parseJsonStringToAeson jsonStr
   CA.decode codec json
 
 -- | Converts the provided value into a JSON string using
 -- | the specified codec. 
 caEncodeString :: forall a. CA.JsonCodec a -> a -> String
-caEncodeString codec = A.stringify <<< CA.encode codec
+caEncodeString codec = stringifyAeson <<< CA.encode codec
 
 asCborCodec :: forall a. AsCbor a => String -> CA.JsonCodec a
 asCborCodec name =

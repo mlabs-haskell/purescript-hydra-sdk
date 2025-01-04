@@ -4,6 +4,7 @@ module HydraSdk.Example.Minimal.Main
 
 import Prelude
 
+import Aeson (stringifyAeson)
 import Cardano.AsCbor (decodeCbor, encodeCbor)
 import Cardano.Types (Language(PlutusV2), Transaction)
 import Cardano.Types.AuxiliaryData (hashAuxiliaryData)
@@ -18,14 +19,13 @@ import Contract.Transaction (signTransaction, submit)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader (ask)
 import Ctl.Internal.Transaction (setScriptDataHash)
-import Data.Argonaut (stringifyWithIndent)
 import Data.Array (length) as Array
 import Data.Codec.Argonaut (encode) as CA
 import Data.Either (Either(Left, Right))
 import Data.Lens ((.~))
 import Data.Log.Level (LogLevel(Info, Error))
 import Data.Map (empty, filterKeys, fromFoldable) as Map
-import Data.Maybe (Maybe(Just, Nothing))
+import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(SIGINT, SIGTERM))
 import Data.Traversable (traverse_)
@@ -33,7 +33,7 @@ import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, runAff_)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Effect.Exception (error, message)
+import Effect.Exception (error, message, name, stack) as Error
 import Effect.Ref (Ref)
 import Effect.Ref (new, read, write) as Ref
 import HydraSdk.Example.Minimal.App
@@ -93,7 +93,12 @@ main =
     appHandle <- startDelegateServer appState logger
     liftEffect do
       onUncaughtException \err -> do
-        runAppEff appState logger $ logError' $ "UNCAUGHT EXCEPTION: " <> message err
+        runAppEff appState logger $ logError' $
+          "UNCAUGHT "
+            <> Error.name err
+            <> ": "
+            <> Error.message err
+            <> maybe mempty (append ", STACK: ") (Error.stack err)
         appHandle.cleanupHandler
       onSignal SIGINT appHandle.cleanupHandler
       onSignal SIGTERM appHandle.cleanupHandler
@@ -165,7 +170,7 @@ messageHandler ws =
             hydraNodeHttpUrl = "http://" <> printHostPort hydraNodeApiAddress
           liftAff (commitRequest hydraNodeHttpUrl payload) >>= case _ of
             Left httpErr ->
-              throwError $ error $ "Commit request failed with error: "
+              throwError $ Error.error $ "Commit request failed with error: "
                 <> show httpErr
             Right { cborHex } -> do
               case decodeCbor cborHex of
@@ -174,12 +179,13 @@ messageHandler ws =
                   logInfo' $ "Submitted Commit transaction: " <> cborBytesToHex
                     (encodeCbor txHash)
                 Nothing ->
-                  throwError $ error "Could not decode CommitTx CBOR"
+                  throwError $ Error.error "Could not decode CommitTx CBOR"
         HeadIsOpen { headId, utxo } -> do
           logInfo' $ "Head ID: " <> cborBytesToHex (encodeCbor headId)
           setUtxoSnapshot $ HydraSnapshot
             { snapshotNumber: zero
             , utxo
+            , confirmedTransactions: mempty
             }
           tx <- runContractInApp $ placeArbitraryDatumL2 $ toUtxoMap utxo
           liftEffect $ ws.submitTxL2 tx
@@ -197,7 +203,8 @@ messageHandler ws =
           liftEffect ws.fanout
         HeadIsFinalized _ ->
           -- TODO: output fanout tx hash
-          throwError $ error "SUCCESS: Head finalized, Funds transfered to L1 - Exiting..."
+          throwError $ Error.error
+            "SUCCESS: Head finalized, Funds transfered to L1 - Exiting..."
         _ -> pure unit
 
 fixCommitTx :: Transaction -> Contract Transaction
@@ -236,7 +243,7 @@ contestClosureIfNeeded ws closeSnapshot = do
 setUtxoSnapshot :: HydraSnapshot -> AppM Unit
 setUtxoSnapshot snapshot = do
   App.setUtxoSnapshot snapshot
-  let snapshotFormatted = stringifyWithIndent 2 $ CA.encode hydraSnapshotCodec snapshot
+  let snapshotFormatted = stringifyAeson $ CA.encode hydraSnapshotCodec snapshot
   logInfo' $ "New confirmed snapshot: " <> snapshotFormatted
 
 cleanupHandler
@@ -257,7 +264,7 @@ cleanupHandler logger { hydraNodeProcess, hydraNodeApiWsRef, contractEnv } = do
     ( case _ of
         Left err ->
           logger Error $ "stopContractEnv failed with error: "
-            <> message err
+            <> Error.message err
         Right _ ->
           logger Info "Successfully completed all cleanup actions -> exiting."
     )

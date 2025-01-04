@@ -6,13 +6,13 @@ module HydraSdk.Internal.Http.Utils
 
 import Prelude
 
+import Aeson (Aeson, stringifyAeson)
 import Affjax (Error, Response, URL, defaultRequest) as Affjax
 import Affjax.Node (request) as Affjax
-import Affjax.RequestBody (RequestBody(Json)) as Affjax
+import Affjax.RequestBody (RequestBody(String)) as Affjax
 import Affjax.RequestHeader (RequestHeader) as Affjax
 import Affjax.ResponseFormat (string) as Affjax.ResponseFormat
 import Affjax.StatusCode (StatusCode(StatusCode)) as Affjax
-import Data.Argonaut (Json)
 import Data.Bifunctor (lmap)
 import Data.Codec.Argonaut (JsonCodec) as CA
 import Data.Either (Either(Left, Right))
@@ -35,7 +35,7 @@ getRequest url =
 
 postRequest
   :: { url :: Affjax.URL
-     , content :: Maybe Json
+     , content :: Maybe Aeson
      , headers :: Array Affjax.RequestHeader
      }
   -> Aff (Either Affjax.Error (Affjax.Response String))
@@ -45,7 +45,7 @@ postRequest { url, content, headers } =
     , url = url
     , headers = headers
     , responseFormat = Affjax.ResponseFormat.string
-    , content = Affjax.Json <$> content
+    , content = Affjax.String <<< stringifyAeson <$> content
     }
 
 handleResponse

@@ -17,7 +17,6 @@ import HydraSdk.Internal.Lib.Codec
   , dataHashCodec
   , dateTimeCodec
   , ed25519KeyHashCodec
-  , fixTaggedSumCodec
   , fromCaJsonDecodeError
   , logLevelCodec
   , orefCodec

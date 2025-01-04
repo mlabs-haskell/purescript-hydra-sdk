@@ -39,7 +39,7 @@ let additions =
           , "untagged-union"
           ]
         , repo = "https://github.com/mlabs-haskell/purescript-aeson.git"
-        , version = "v2.0.1"
+        , version = "e7bfc24a941e1d73de88de3f4a034e1da33cc8ae"
         }
       , bignumber =
         { dependencies =
@@ -602,17 +602,43 @@ let additions =
         , repo = "https://github.com/passy/purescript-errors.git"
         , version = "670485beb1e026f77d52ca58ce10c145d96c11ba"
         }
-      , codec-argonaut =
+      , codec-aeson =
         { dependencies =
-          [ "argonaut-core"
+          [ "aeson"
+          , "argonaut-codecs"
+          , "argonaut-core"
+          , "arrays"
+          , "bifunctors"
           , "codec"
+          , "console"
+          , "control"
+          , "effect"
+          , "either"
+          , "exceptions"
+          , "foldable-traversable"
           , "foreign-object"
+          , "gen"
+          , "integers"
+          , "lists"
+          , "maybe"
+          , "newtype"
           , "ordered-collections"
+          , "partial"
+          , "prelude"
+          , "profunctor"
+          , "quickcheck"
+          , "record"
+          , "safe-coerce"
+          , "strings"
+          , "transformers"
+          , "tuples"
           , "type-equality"
+          , "typelevel-prelude"
+          , "unsafe-coerce"
           , "variant"
           ]
         , repo = "https://github.com/errfrom/purescript-codec-argonaut.git"
-        , version = "b623366e2bf297dbbc78d643c36214ab109d9d09"
+        , version = "59996776e733a1e0f1daf085f153b2cca8527907"
         }
       }
 

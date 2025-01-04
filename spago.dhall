@@ -1,6 +1,7 @@
 { name = "hydra-sdk"
 , dependencies =
-  [ "aff"
+  [ "aeson"
+  , "aff"
   , "affjax"
   , "affjax-node"
   , "argonaut"
@@ -9,7 +10,7 @@
   , "bifunctors"
   , "bytearrays"
   , "cardano-types"
-  , "codec-argonaut"
+  , "codec-aeson"
   , "control"
   , "datetime"
   , "effect"
@@ -21,7 +22,6 @@
   , "formatters"
   , "http-methods"
   , "integers"
-  , "js-bigints"
   , "js-date"
   , "maybe"
   , "monad-logger"
@@ -47,7 +47,6 @@
   , "uint"
   , "uri"
   , "uuid"
-  , "variant"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

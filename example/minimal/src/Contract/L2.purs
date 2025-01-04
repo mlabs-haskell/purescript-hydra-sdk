@@ -5,9 +5,7 @@ module HydraSdk.Example.Minimal.Contract.L2
 import Prelude
 
 import Cardano.Types (Credential(PubKeyHashCredential), Transaction, UtxoMap)
-import Cardano.Types (PlutusData(Integer)) as PlutusData
 import Cardano.Types.Address (getPaymentCredential)
-import Cardano.Types.BigInt (fromInt) as BigInt
 import Cardano.Types.Value (empty) as Value
 import Contract.BalanceTxConstraints (BalancerConstraints)
 import Contract.BalanceTxConstraints (mustUseUtxosAtAddresses) as BalancerConstraints
@@ -45,8 +43,7 @@ placeArbitraryDatumL2 snapshotUtxos = do
             <<< snd
         )
         (Map.toUnfoldable snapshotUtxos)
-  -- FIXME: datum <- liftEffect $ randomSampleOne arbitrary
-  datum <- pure $ PlutusData.Integer $ BigInt.fromInt 42
+  datum <- liftEffect $ randomSampleOne arbitrary
   let
     constraints :: TxConstraints
     constraints =

@@ -7,7 +7,7 @@
     "hydraSigningKey": "keys/hydra-a.sk",
     "cardanoSigningKey": "keys/cardano-a.sk",
     "network": {
-      "tag": "testnet",
+      "tag": "Testnet",
       "magic": 1
     },
     "nodeSocket": "node-ipc/node.socket",

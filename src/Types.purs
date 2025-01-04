@@ -1,9 +1,8 @@
---| Re-exports various Hydra domain-specific types
---| (such as `HydraHeadStatus` and `HydraNodeApi_InMessage`),
---| along with other utility types (e.g., `HostPort` and `Network`).
+-- | Re-exports various Hydra domain-specific types
+-- | (such as `HydraHeadStatus` and `HydraNodeApi_InMessage`),
+-- | along with other utility types (e.g., `HostPort` and `Network`).
 module HydraSdk.Types
-  ( module ExportArgonautJson
-  , module ExportCommitRequest
+  ( module ExportCommitRequest
   , module ExportHeadStatus
   , module ExportHostPort
   , module ExportHttpError
@@ -18,11 +17,6 @@ import HydraSdk.Internal.Http.Error
   ( AffjaxError(AffjaxError)
   , HttpError(DecodeJsonError, HttpRequestError, HttpResponseError)
   ) as ExportHttpError
-
-import HydraSdk.Internal.Types.ArgonautJson
-  ( ArgonautJson(ArgonautJson)
-  , argonautJsonCodec
-  ) as ExportArgonautJson
 
 import HydraSdk.Internal.Types.CommitRequest
   ( HydraCommitRequest(SimpleCommitRequest, FullCommitRequest)

@@ -48,8 +48,9 @@ module HydraSdk.Internal.Types.NodeApiMessage
 
 import Prelude
 
+import Aeson (Aeson)
 import Cardano.Types (PublicKey, ScriptHash)
-import Data.Codec.Argonaut (JsonCodec, JPropCodec, array, int, object, string) as CA
+import Data.Codec.Argonaut (JPropCodec, JsonCodec, array, int, json, object, string) as CA
 import Data.Codec.Argonaut.Record (optional, record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
 import Data.DateTime (DateTime)
@@ -57,7 +58,6 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Show.Generic (genericShow)
 import HydraSdk.Internal.Lib.Codec (dateTimeCodec, publicKeyCodec, scriptHashCodec)
-import HydraSdk.Internal.Types.ArgonautJson (ArgonautJson, argonautJsonCodec)
 import HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
       ( HeadStatus_Initializing
@@ -192,7 +192,7 @@ peerConnMessageCodec =
 -- TODO: remoteHost: there appears to be a discrepancy between API
 -- docs and the actual implementation
 type PeerHandshakeFailureMessage =
-  { remoteHost :: ArgonautJson
+  { remoteHost :: Aeson
   , ourVersion :: Int
   , theirVersions :: Array Int
   , seq :: Int
@@ -202,7 +202,7 @@ type PeerHandshakeFailureMessage =
 peerHandshakeFailureMessageCodec :: CA.JPropCodec PeerHandshakeFailureMessage
 peerHandshakeFailureMessageCodec =
   CAR.record
-    { remoteHost: argonautJsonCodec
+    { remoteHost: CA.json
     , ourVersion: CA.int
     , theirVersions: CA.array CA.int
     , seq: CA.int

@@ -8,7 +8,15 @@ module HydraSdk.Internal.Types.UtxoMap
 
 import Prelude
 
-import Aeson (class DecodeAeson, class EncodeAeson, Aeson, decodeAeson, encodeAeson, (.:))
+import Aeson
+  ( class DecodeAeson
+  , class EncodeAeson
+  , Aeson
+  , decodeAeson
+  , encodeAeson
+  , (.:)
+  , (.:?)
+  )
 import Aeson (fromObject) as Aeson
 import Cardano.AsCbor (decodeCbor, encodeCbor)
 import Cardano.Plutus.Types.CurrencySymbol (mkCurrencySymbol)
@@ -250,7 +258,7 @@ decodeValue json = do
         mempty
         (Obj.toUnfoldable $ Obj.delete lovelaceKey obj)
 
-  lovelace <- obj .: lovelaceKey
+  lovelace <- obj .:? lovelaceKey
   nonAdaAssets <- decodeNonAdaAssets
   let plutusValue = nonAdaAssets <> maybe mempty Plutus.Value.lovelaceValueOf lovelace
   note (TypeMismatch "Cardano.Value") $ Plutus.Value.toCardano plutusValue

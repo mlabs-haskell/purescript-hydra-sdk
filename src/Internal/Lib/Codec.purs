@@ -27,7 +27,7 @@ import Prelude
 import Aeson (parseJsonStringToAeson, stringifyAeson, toStringifiedNumbersJson)
 import Cardano.AsCbor (class AsCbor, decodeCbor, encodeCbor)
 import Cardano.Types
-  ( Address
+  ( Address(ByronAddress)
   , CborBytes(CborBytes)
   , DataHash
   , Ed25519KeyHash
@@ -39,7 +39,9 @@ import Cardano.Types
   , TransactionInput(TransactionInput)
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
+import Cardano.Types.ByronAddress (fromBase58, toBase58) as ByronAddress
 import Cardano.Types.PublicKey (fromRawBytes, toRawBytes) as PublicKey
+import Control.Alt ((<|>))
 import Data.Argonaut
   ( JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
   ) as A
@@ -104,7 +106,12 @@ asCborCodec name =
 
 addressCodec :: CA.JsonCodec Address
 addressCodec =
-  CA.prismaticCodec "Address" Address.fromBech32 Address.toBech32
+  CA.prismaticCodec "Address"
+    (\str -> Address.fromBech32 str <|> (ByronAddress <$> ByronAddress.fromBase58 str))
+    ( case _ of
+        ByronAddress byronAddr -> ByronAddress.toBase58 byronAddr
+        addr -> Address.toBech32 addr
+    )
     CA.string
 
 byteArrayCodec :: CA.JsonCodec ByteArray

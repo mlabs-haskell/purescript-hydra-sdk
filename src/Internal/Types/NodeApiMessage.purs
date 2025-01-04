@@ -38,9 +38,11 @@ module HydraSdk.Internal.Types.NodeApiMessage
   , PeerConnMessage
   , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
+  , SeqTimestamp
   , SnapshotConfirmedMessage
   , TxInvalidMessage
   , TxValidMessage
+  , greetingsMessageCodec
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   , nextHeadStatus
@@ -51,7 +53,7 @@ import Prelude
 import Aeson (Aeson)
 import Cardano.Types (PublicKey, ScriptHash)
 import Data.Codec.Argonaut (JPropCodec, JsonCodec, array, int, json, object, string) as CA
-import Data.Codec.Argonaut.Record (optional, record) as CAR
+import Data.Codec.Argonaut.Record (class RowListCodec, optional, record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
 import Data.DateTime (DateTime)
 import Data.Generic.Rep (class Generic)
@@ -71,6 +73,9 @@ import HydraSdk.Internal.Types.HeadStatus
 import HydraSdk.Internal.Types.Snapshot (HydraSnapshot, hydraSnapshotCodec)
 import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
 import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
+import Prim.Row (class Nub, class Union)
+import Prim.RowList (class RowToList)
+import Record (merge) as Record
 
 ----------------------------------------------------------------------
 -- Incoming messages
@@ -136,6 +141,29 @@ nextHeadStatus =
     HeadIsFinalized _ -> Just HeadStatus_Final
     _ -> Nothing
 
+type SeqTimestamp (r :: Row Type) = Record
+  ( seq :: Maybe Int
+  , timestamp :: Maybe DateTime
+  | r
+  )
+
+recCodecUnion
+  :: forall c0 c1 c' c r rl
+   . Union c0 c1 c'
+  => Nub c' c
+  => RowToList c rl
+  => CAR.RowListCodec rl c r
+  => Record c0
+  -> Record c1
+  -> CA.JPropCodec (Record r)
+recCodecUnion rec0 = CAR.record <<< Record.merge rec0
+
+seqTimestampCodec =
+  recCodecUnion
+    { seq: CAR.optional CA.int
+    , timestamp: CAR.optional dateTimeCodec
+    }
+
 ----------------------------------------------------------------------
 -- 0. Greetings
 
@@ -147,9 +175,9 @@ nextHeadStatus =
 type GreetingsMessage =
   { me :: { vkey :: PublicKey }
   , headStatus :: HydraHeadStatus
-  , hydraHeadId :: Maybe ScriptHash
+  , hydraHeadId :: Maybe String -- ScriptHash
   , snapshotUtxo :: Maybe HydraUtxoMap
-  , timestamp :: DateTime
+  , timestamp :: Maybe DateTime
   , hydraNodeVersion :: String
   }
 
@@ -161,8 +189,8 @@ greetingsMessageCodec =
         }
     , headStatus: headStatusCodec
     , snapshotUtxo: CAR.optional hydraUtxoMapCodec
-    , hydraHeadId: CAR.optional scriptHashCodec
-    , timestamp: dateTimeCodec
+    , hydraHeadId: CAR.optional CA.string -- scriptHashCodec
+    , timestamp: CAR.optional dateTimeCodec
     , hydraNodeVersion: CA.string
     }
 
@@ -171,18 +199,14 @@ greetingsMessageCodec =
 
 -- | A message indicating a change in the connection status
 -- | of a Head peer. 
-type PeerConnMessage =
-  { peer :: String
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+type PeerConnMessage = SeqTimestamp
+  ( peer :: String
+  )
 
 peerConnMessageCodec :: CA.JPropCodec PeerConnMessage
 peerConnMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { peer: CA.string
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -191,22 +215,18 @@ peerConnMessageCodec =
 -- | A peer has failed to negotiate a protocol.
 -- TODO: remoteHost: there appears to be a discrepancy between API
 -- docs and the actual implementation
-type PeerHandshakeFailureMessage =
-  { remoteHost :: Aeson
+type PeerHandshakeFailureMessage = SeqTimestamp
+  ( remoteHost :: Aeson
   , ourVersion :: Int
   , theirVersions :: Array Int
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 peerHandshakeFailureMessageCodec :: CA.JPropCodec PeerHandshakeFailureMessage
 peerHandshakeFailureMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { remoteHost: CA.json
     , ourVersion: CA.int
     , theirVersions: CA.array CA.int
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -214,23 +234,19 @@ peerHandshakeFailureMessageCodec =
 
 -- | An Init transaction has been observed onchain, with the given
 -- | Head ID.
-type HeadInitMessage =
-  { headId :: ScriptHash
+type HeadInitMessage = SeqTimestamp
+  ( headId :: String -- ScriptHash
   , parties :: Array { vkey :: PublicKey }
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 headInitMessageCodec :: CA.JPropCodec HeadInitMessage
 headInitMessageCodec =
-  CAR.record
-    { headId: scriptHashCodec
+  seqTimestampCodec
+    { headId: CA.string -- scriptHashCodec
     , parties:
         CA.array $ CA.object "HeadInitMessage:parties" $ CAR.record
           { vkey: publicKeyCodec
           }
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -238,23 +254,19 @@ headInitMessageCodec =
 
 -- | A Commit transaction from a Head participant has been observed
 -- | onchain.
-type CommittedMessage =
-  { party :: { vkey :: PublicKey }
+type CommittedMessage = SeqTimestamp
+  ( party :: { vkey :: PublicKey }
   , utxo :: HydraUtxoMap
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 committedMessageCodec :: CA.JPropCodec CommittedMessage
 committedMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { party:
         CA.object "CommittedMessage:party" $ CAR.record
           { vkey: publicKeyCodec
           }
     , utxo: hydraUtxoMapCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -262,20 +274,16 @@ committedMessageCodec =
 
 -- | All parties have committed, and a successful CollectCom transaction
 -- | was observed onchain.
-type HeadOpenMessage =
-  { headId :: ScriptHash
+type HeadOpenMessage = SeqTimestamp
+  ( headId :: String -- ScriptHash
   , utxo :: HydraUtxoMap
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 headOpenMessageCodec :: CA.JPropCodec HeadOpenMessage
 headOpenMessageCodec =
-  CAR.record
-    { headId: scriptHashCodec
+  seqTimestampCodec
+    { headId: CA.string -- scriptHashCodec
     , utxo: hydraUtxoMapCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -283,22 +291,18 @@ headOpenMessageCodec =
 
 -- | A Close transaction has been observed onchain, the head is now
 -- | closed and the contestation phase begins.
-type HeadClosedMessage =
-  { headId :: ScriptHash
+type HeadClosedMessage = SeqTimestamp
+  ( headId :: String -- ScriptHash
   , snapshotNumber :: Int
   , contestationDeadline :: DateTime
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 headClosedMessageCodec :: CA.JPropCodec HeadClosedMessage
 headClosedMessageCodec =
-  CAR.record
-    { headId: scriptHashCodec
+  seqTimestampCodec
+    { headId: CA.string -- scriptHashCodec
     , snapshotNumber: CA.int
     , contestationDeadline: dateTimeCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -308,22 +312,18 @@ headClosedMessageCodec =
 -- | the Head state has been successfully contested and the returned
 -- | snapshot number is now the latest accepted snapshot. The
 -- | contestation phase was extended to the specified deadline.
-type HeadContestedMessage =
-  { headId :: ScriptHash
+type HeadContestedMessage = SeqTimestamp
+  ( headId :: String -- ScriptHash
   , snapshotNumber :: Int
   , contestationDeadline :: DateTime
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 headContestedMessageCodec :: CA.JPropCodec HeadContestedMessage
 headContestedMessageCodec =
-  CAR.record
-    { headId: scriptHashCodec
+  seqTimestampCodec
+    { headId: CA.string -- scriptHashCodec
     , snapshotNumber: CA.int
     , contestationDeadline: dateTimeCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -331,18 +331,14 @@ headContestedMessageCodec =
 
 -- | The contestation period has passed and the Head can now be
 -- | finalized by a Fanout transaction.
-type ReadyToFanoutMessage =
-  { headId :: ScriptHash
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+type ReadyToFanoutMessage = SeqTimestamp
+  ( headId :: String -- ScriptHash
+  )
 
 readyToFanoutMessageCodec :: CA.JPropCodec ReadyToFanoutMessage
 readyToFanoutMessageCodec =
-  CAR.record
-    { headId: scriptHashCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
+  seqTimestampCodec
+    { headId: CA.string -- scriptHashCodec
     }
 
 ----------------------------------------------------------------------
@@ -350,20 +346,16 @@ readyToFanoutMessageCodec =
 
 -- | One of the participants did Abort the Head before all commits
 -- | were done or collected.
-type HeadAbortedMessage =
-  { headId :: ScriptHash
+type HeadAbortedMessage = SeqTimestamp
+  ( headId :: ScriptHash
   , utxo :: HydraUtxoMap
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 headAbortedMessageCodec :: CA.JPropCodec HeadAbortedMessage
 headAbortedMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -371,20 +363,16 @@ headAbortedMessageCodec =
 
 -- | The Head was already closed and the contestation period
 -- | is now over.
-type HeadFinalizedMessage =
-  { headId :: ScriptHash
+type HeadFinalizedMessage = SeqTimestamp
+  ( headId :: ScriptHash
   , utxo :: HydraUtxoMap
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 headFinalizedMessageCodec :: CA.JPropCodec HeadFinalizedMessage
 headFinalizedMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -393,20 +381,16 @@ headFinalizedMessageCodec =
 -- | Observed a valid transaction inside the Head. Note that a node
 -- | observes its own transactions and it may still happen that this
 -- | transaction is not included in a snapshot.
-type TxValidMessage =
-  { headId :: ScriptHash
+type TxValidMessage = SeqTimestamp
+  ( headId :: ScriptHash
   , transaction :: HydraTx
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 txValidMessageCodec :: CA.JPropCodec TxValidMessage
 txValidMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { headId: scriptHashCodec
     , transaction: hydraTxCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -418,18 +402,16 @@ txValidMessageCodec =
 -- | observed in-between). The included validation error should give
 -- | an indication why it was not applicable to the given UTxO
 -- | (the local, seen ledger state).
-type TxInvalidMessage =
-  { headId :: ScriptHash
+type TxInvalidMessage = SeqTimestamp
+  ( headId :: ScriptHash
   , utxo :: HydraUtxoMap
   , transaction :: HydraTx
   , validationError :: { reason :: String }
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 txInvalidMessageCodec :: CA.JPropCodec TxInvalidMessage
 txInvalidMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { headId: scriptHashCodec
     , utxo: hydraUtxoMapCodec
     , transaction: hydraTxCodec
@@ -437,8 +419,6 @@ txInvalidMessageCodec =
         CA.object "TxInvalidMessage:validationError" $ CAR.record
           { reason: CA.string
           }
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -446,20 +426,16 @@ txInvalidMessageCodec =
 
 -- | The given snapshot has been multi-signed by all Head participants
 -- | and is now confirmed.
-type SnapshotConfirmedMessage =
-  { headId :: ScriptHash
+type SnapshotConfirmedMessage = SeqTimestamp
+  ( headId :: ScriptHash
   , snapshot :: HydraSnapshot
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 snapshotConfirmedMessageCodec :: CA.JPropCodec SnapshotConfirmedMessage
 snapshotConfirmedMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { headId: scriptHashCodec
     , snapshot: hydraSnapshotCodec
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------
@@ -468,20 +444,16 @@ snapshotConfirmedMessageCodec =
 -- | Emitted by the server when it has failed to parse some client
 -- | input. It returns the malformed input as well as some hint about
 -- | what went wrong.
-type InvalidInputMessage =
-  { reason :: String
+type InvalidInputMessage = SeqTimestamp
+  ( reason :: String
   , input :: String
-  , seq :: Int
-  , timestamp :: DateTime
-  }
+  )
 
 invalidInputMessageCodec :: CA.JPropCodec InvalidInputMessage
 invalidInputMessageCodec =
-  CAR.record
+  seqTimestampCodec
     { reason: CA.string
     , input: CA.string
-    , seq: CA.int
-    , timestamp: dateTimeCodec
     }
 
 ----------------------------------------------------------------------

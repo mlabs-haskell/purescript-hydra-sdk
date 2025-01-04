@@ -3,14 +3,19 @@
 
   nixConfig = {
     extra-experimental-features = [ "flakes" "nix-command" ];
-    bash-prompt = "\\[\\e[0m\\][\\[\\e[0;2m\\]nix-develop \\[\\e[0;1m\\]purs-hydra-sdk@\\[\\033[33m\\]$(git rev-parse --abbrev-ref HEAD) \\[\\e[0;32m\\]\\w\\[\\e[0m\\]]\\[\\e[0m\\]$ \\[\\e[0m\\]";
+    bash-prompt = "\\[\\e[0m\\][\\[\\e[0;2m\\]nix-develop \\[\\e[0;1m\\]hydra-sdk@\\[\\033[33m\\]$(git rev-parse --abbrev-ref HEAD) \\[\\e[0;32m\\]\\w\\[\\e[0m\\]]\\[\\e[0m\\]$ \\[\\e[0m\\]";
   };
 
   inputs = {
     nixpkgs.follows = "ctl/nixpkgs";
-    cardano-node.url = "github:input-output-hk/cardano-node/10.1.2";
+    hydra.url = "github:input-output-hk/hydra/0.19.0";
+    hydra-fixtures = {
+      url = "github:input-output-hk/hydra/85a210df73e15733c602a8c0c46aab2400d5323d";
+      flake = false;
+    };
+    cardano-node.url = "github:input-output-hk/cardano-node/10.1.3";
     cardano-configurations = {
-      url = "github:input-output-hk/cardano-configurations?rev=3c5f35bda1b8fd29ab310ad222403a9167f512de";
+      url = "github:input-output-hk/cardano-configurations?rev=a913d87246dc2484562a00c86e5f9c74a20e82ce";
       flake = false;
     };
     ctl = {
@@ -20,10 +25,9 @@
         cardano-configurations.follows = "cardano-configurations";
       };
     };
-    hydra.url = "github:input-output-hk/hydra/0.19.0";
   };
 
-  outputs = { self, nixpkgs, ctl, hydra, hydra-auction-onchain, ... }@inputs:
+  outputs = { self, nixpkgs, ctl, hydra, hydra-fixtures, ... }@inputs:
     let
       projectName = "purescript-hydra-sdk";
       supportedSystems = [ "x86_64-linux" ];
@@ -41,6 +45,12 @@
         ];
       };
 
+      hydraFixturesFor = pkgs: pkgs.runCommand "hydra-fixtures" { }
+        ''
+          mkdir $out
+          cp -r ${hydra-fixtures}/hydra-node/golden/ServerOutput $out
+        '';
+
       psProjectFor = system: pkgs:
         pkgs.purescriptProject rec {
           inherit pkgs projectName;
@@ -53,6 +63,7 @@
           packageLock = ./package-lock.json;
           shell = {
             withRuntime = true;
+            shellHook = "export HYDRA_FIXTURES=${hydraFixturesFor pkgs}";
             packageLockOnly = true;
             packages = with pkgs; [
               fd

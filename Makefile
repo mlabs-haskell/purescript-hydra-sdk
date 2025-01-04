@@ -1,4 +1,4 @@
-.PHONY: build, format, repl, docs, build-example, run-example, docker-cleanup, gen-keys
+.PHONY: build, test, format, repl, docs, build-example, run-example, docker-cleanup, gen-keys
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
@@ -14,6 +14,9 @@ requires-nix-shell:
 
 build: requires-nix-shell
 	spago build --purs-args ${purs-args}
+
+test: requires-nix-shell
+	spago run --main Test.Main
 
 format: requires-nix-shell
 	@purs-tidy format-in-place ${ps-sources}

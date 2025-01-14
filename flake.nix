@@ -61,19 +61,22 @@
           done
         '';
 
-      psProjectFor = system: pkgs:
+      psProjectFor = system: pkgs: hydraFixtures:
         pkgs.purescriptProject rec {
           inherit pkgs projectName;
           src = builtins.path {
             path = ./.;
             name = "${projectName}-src";
-            filter = path: ftype: !(pkgs.lib.hasSuffix ".md" path) && (builtins.baseNameOf path != "flake.nix");
+            filter = path: ftype:
+              !(pkgs.lib.hasSuffix ".md" path) &&
+              (builtins.baseNameOf path != "flake.nix") &&
+              !(ftype == "directory" && builtins.baseNameOf path == "example");
           };
           packageJson = ./package.json;
           packageLock = ./package-lock.json;
           shell = {
             withRuntime = true;
-            shellHook = "export HYDRA_FIXTURES=${hydraFixturesFor pkgs}";
+            shellHook = "export HYDRA_FIXTURES=${hydraFixtures}";
             packageLockOnly = true;
             packages = with pkgs; [
               fd
@@ -92,9 +95,10 @@
       devShells = perSystem (system:
         let
           pkgs = nixpkgsFor system;
+          hydraFixtures = hydraFixturesFor pkgs;
         in
         {
-          default = (psProjectFor system pkgs).devShell;
+          default = (psProjectFor system pkgs hydraFixtures).devShell;
         }
       );
 
@@ -113,7 +117,8 @@
       checks = perSystem (system:
         let
           pkgs = nixpkgsFor system;
-          project = psProjectFor system pkgs;
+          hydraFixtures = hydraFixturesFor pkgs;
+          project = psProjectFor system pkgs hydraFixtures;
           builtProject = project.buildPursProject {
             strictComp = true;
             censorCodes = [
@@ -127,7 +132,14 @@
           };
         in
         {
-          formatting-check = pkgs.runCommand "formatting-check"
+          hydra-sdk-unit-tests = project.runPursTest {
+            inherit builtProject;
+            name = "hydra-sdk-unit-tests";
+            testMain = "Test.Main";
+            env = { HYDRA_FIXTURES = "${hydraFixtures}"; };
+          };
+
+          hydra-sdk-formatting-check = pkgs.runCommand "hydra-sdk-formatting-check"
             {
               nativeBuildInputs = with pkgs; [
                 fd

@@ -1,5 +1,6 @@
 module HydraSdk.Internal.Types.NodeApiMessage
-  ( CommittedMessage
+  ( CommandFailedMessage
+  , CommittedMessage
   , GreetingsMessage
   , HeadAbortedMessage
   , HeadClosedMessage
@@ -26,6 +27,8 @@ module HydraSdk.Internal.Types.NodeApiMessage
       , SnapshotConfirmed
       , InvalidInput
       , PostTxOnChainFailed
+      , CommandFailed
+      , IgnoredHeadInitializing
       )
   , HydraNodeApi_OutMessage
       ( Init
@@ -35,6 +38,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
       , Contest
       , Fanout
       )
+  , IgnoredHeadInitMessage
   , InvalidInputMessage
   , NewTxMessage
   , PeerConnMessage
@@ -85,7 +89,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
 import Prelude
 
 import Aeson (Aeson)
-import Cardano.Types (Coin, PublicKey, TransactionHash)
+import Cardano.Types (Coin, Ed25519KeyHash, PublicKey, TransactionHash)
 import Data.Codec.Argonaut (JPropCodec, JsonCodec, array, int, json, object, string) as CA
 import Data.Codec.Argonaut.Record (class RowListCodec, optional, record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
@@ -93,7 +97,13 @@ import Data.DateTime (DateTime)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Show.Generic (genericShow)
-import HydraSdk.Internal.Lib.Codec (coinCodec, dateTimeCodec, publicKeyCodec, txHashCodec)
+import HydraSdk.Internal.Lib.Codec
+  ( coinCodec
+  , dateTimeCodec
+  , ed25519KeyHashCodec
+  , publicKeyCodec
+  , txHashCodec
+  )
 import HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
       ( HeadStatus_Initializing
@@ -120,7 +130,7 @@ import Record (merge) as Record
 -- Incoming messages
 
 -- | Represents incoming messages from the hydra-node API WebSocket server.
--- TODO: add missing variants: PostTxOnChainFailed, CommandFailed, IgnoredHeadInitializing
+-- | Reference: https://github.com/cardano-scaling/hydra/blob/1ffe7c6b505e3f38b5546ae5e5b97de26bc70425/hydra-node/src/Hydra/API/ServerOutput.hs#L76-L141
 data HydraNodeApi_InMessage
   = Greetings GreetingsMessage
   | PeerConnected PeerConnMessage
@@ -139,6 +149,8 @@ data HydraNodeApi_InMessage
   | SnapshotConfirmed SnapshotConfirmedMessage
   | InvalidInput InvalidInputMessage
   | PostTxOnChainFailed PostTxOnchainFailedMessage
+  | CommandFailed CommandFailedMessage
+  | IgnoredHeadInitializing IgnoredHeadInitMessage
 
 derive instance Generic HydraNodeApi_InMessage _
 derive instance Eq HydraNodeApi_InMessage
@@ -166,6 +178,8 @@ hydraNodeApiInMessageCodec =
     , "SnapshotConfirmed": snapshotConfirmedMessageCodec
     , "InvalidInput": invalidInputMessageCodec
     , "PostTxOnChainFailed": postTxOnchainFailedMessageCodec
+    , "CommandFailed": commandFailedMessageCodec
+    , "IgnoredHeadInitializing": ignoredHeadInitMessageCodec
     }
 
 -- | Determines the new Head status based on the incoming hydra-node API message.
@@ -515,6 +529,51 @@ postTxOnchainFailedMessageCodec =
     , postTxError: postTxErrorCodec
     }
 
+----------------------------------------------------------------------
+-- 17. CommandFailed
+
+-- | Emitted by the server when a well-formed client input was not
+-- | processable. For example, if trying to close a non opened head
+-- | or, when trying to commit after having already committed.
+type CommandFailedMessage = SeqTimestamp
+  ( clientInput :: HydraNodeApi_OutMessage
+  )
+
+commandFailedMessageCodec :: CA.JPropCodec CommandFailedMessage
+commandFailedMessageCodec =
+  seqTimestampCodec
+    { clientInput: hydraNodeApiOutMessageCodec
+    }
+
+----------------------------------------------------------------------
+-- 18. IgnoredHeadInitializing 
+
+-- | An Init transaction has been observed on-chain, with the given
+-- | HeadId and the given participant identifiers, but we are not part
+-- | of it. It could denote a misconfiguration, or simply some other
+-- | group of parties opening a head.
+type IgnoredHeadInitMessage = SeqTimestamp
+  ( headId :: String
+  , contestationPeriod :: Int
+  , parties :: Array { vkey :: PublicKey }
+  , participants :: Array Ed25519KeyHash
+  )
+
+ignoredHeadInitMessageCodec :: CA.JPropCodec IgnoredHeadInitMessage
+ignoredHeadInitMessageCodec =
+  seqTimestampCodec
+    { headId: CA.string
+    , contestationPeriod: CA.int
+    , parties:
+        CA.array $ CA.object "HeadParameters:parties" $ CAR.record
+          { vkey: publicKeyCodec
+          }
+    , participants: CA.array ed25519KeyHashCodec
+    }
+
+----------------------------------------------------------------------
+-- Misc
+
 type HeadParameters =
   { contestationPeriod :: Int
   , parties :: Array { vkey :: PublicKey }
@@ -534,7 +593,7 @@ headParametersCodec =
 -- | Reference: https://github.com/cardano-scaling/hydra/blob/1ffe7c6b505e3f38b5546ae5e5b97de26bc70425/hydra-node/src/Hydra/Chain.hs#L51-L75
 data PostChainTx
   = InitTx
-      { participants :: Array String
+      { participants :: Array Ed25519KeyHash
       , headParameters :: HeadParameters
       }
   | AbortTx
@@ -587,7 +646,7 @@ postChainTxCodec =
   CAS.sumFlat "PostChainTx"
     { "InitTx":
         CAR.record
-          { participants: CA.array CA.string
+          { participants: CA.array ed25519KeyHashCodec
           , headParameters: headParametersCodec
           }
     , "AbortTx":

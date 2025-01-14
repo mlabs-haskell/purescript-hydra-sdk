@@ -59,7 +59,8 @@ import HydraSdk.Internal.Types.Network
   ) as ExportNetwork
 
 import HydraSdk.Internal.Types.NodeApiMessage
-  ( CommittedMessage
+  ( CommandFailedMessage
+  , CommittedMessage
   , GreetingsMessage
   , HeadAbortedMessage
   , HeadClosedMessage
@@ -85,6 +86,8 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , SnapshotConfirmed
       , InvalidInput
       , PostTxOnChainFailed
+      , CommandFailed
+      , IgnoredHeadInitializing
       )
   , HydraNodeApi_OutMessage
       ( Init
@@ -94,6 +97,7 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , Contest
       , Fanout
       )
+  , IgnoredHeadInitMessage
   , InvalidInputMessage
   , NewTxMessage
   , PeerConnMessage

@@ -2,11 +2,15 @@
 -- | types in the SDK along with useful helper functions.
 module HydraSdk.Internal.Lib.Codec
   ( addressCodec
+  , aesonCodec
+  , bigIntCodec
+  , bigNumCodec
   , byteArrayCodec
   , caDecodeFile
   , caDecodeString
   , caEncodeString
   , cborBytesCodec
+  , coinCodec
   , dataHashCodec
   , dateTimeCodec
   , ed25519KeyHashCodec
@@ -18,17 +22,31 @@ module HydraSdk.Internal.Lib.Codec
   , rawBytesCodec
   , readOref
   , scriptHashCodec
+  , toCaJsonDecodeError
   , txCodec
   , txHashCodec
   ) where
 
 import Prelude
 
-import Aeson (parseJsonStringToAeson, stringifyAeson, toStringifiedNumbersJson)
+import Aeson
+  ( class DecodeAeson
+  , class EncodeAeson
+  , decodeAeson
+  , encodeAeson
+  , jsonToAeson
+  , parseJsonStringToAeson
+  , stringifyAeson
+  , toStringifiedNumbersJson
+  )
+import Aeson (fromBigInt, toBigInt) as Aeson
 import Cardano.AsCbor (class AsCbor, decodeCbor, encodeCbor)
 import Cardano.Types
   ( Address(ByronAddress)
+  , BigInt
+  , BigNum
   , CborBytes(CborBytes)
+  , Coin(Coin)
   , DataHash
   , Ed25519KeyHash
   , PublicKey
@@ -39,6 +57,7 @@ import Cardano.Types
   , TransactionInput(TransactionInput)
   )
 import Cardano.Types.Address (fromBech32, toBech32) as Address
+import Cardano.Types.BigNum (fromBigInt, toBigInt) as BigNum
 import Cardano.Types.ByronAddress (fromBase58, toBase58) as ByronAddress
 import Cardano.Types.PublicKey (fromRawBytes, toRawBytes) as PublicKey
 import Control.Alt ((<|>))
@@ -50,8 +69,11 @@ import Data.ByteArray (ByteArray, byteArrayToHex, hexToByteArray)
 import Data.Codec.Argonaut
   ( JsonCodec
   , JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
+  , codec'
   , decode
   , encode
+  , json
+  , named
   , prismaticCodec
   , string
   ) as CA
@@ -75,11 +97,20 @@ import Partial.Unsafe (unsafePartial)
 fromCaJsonDecodeError :: CA.JsonDecodeError -> A.JsonDecodeError
 fromCaJsonDecodeError = case _ of
   CA.TypeMismatch type_ -> A.TypeMismatch type_
-  CA.UnexpectedValue json -> A.UnexpectedValue $ toStringifiedNumbersJson json
+  CA.UnexpectedValue aeson -> A.UnexpectedValue $ toStringifiedNumbersJson aeson
   CA.AtIndex idx err -> A.AtIndex idx $ fromCaJsonDecodeError err
   CA.AtKey key err -> A.AtKey key $ fromCaJsonDecodeError err
   CA.Named name err -> A.Named name $ fromCaJsonDecodeError err
   CA.MissingValue -> A.MissingValue
+
+toCaJsonDecodeError :: A.JsonDecodeError -> CA.JsonDecodeError
+toCaJsonDecodeError = case _ of
+  A.TypeMismatch type_ -> CA.TypeMismatch type_
+  A.UnexpectedValue json -> CA.UnexpectedValue $ jsonToAeson json
+  A.AtIndex idx err -> CA.AtIndex idx $ toCaJsonDecodeError err
+  A.AtKey key err -> CA.AtKey key $ toCaJsonDecodeError err
+  A.Named name err -> CA.Named name $ toCaJsonDecodeError err
+  A.MissingValue -> CA.MissingValue
 
 -- | Attempts to decode the given JSON file using the specified codec.
 caDecodeFile :: forall a. CA.JsonCodec a -> FilePath -> Effect (Either CA.JsonDecodeError a)
@@ -99,6 +130,11 @@ caDecodeString codec jsonStr = do
 caEncodeString :: forall a. CA.JsonCodec a -> a -> String
 caEncodeString codec = stringifyAeson <<< CA.encode codec
 
+aesonCodec :: forall a. DecodeAeson a => EncodeAeson a => String -> CA.JsonCodec a
+aesonCodec name =
+  CA.named name $
+    CA.codec' (lmap toCaJsonDecodeError <<< decodeAeson) encodeAeson
+
 asCborCodec :: forall a. AsCbor a => String -> CA.JsonCodec a
 asCborCodec name =
   CA.prismaticCodec name decodeCbor encodeCbor
@@ -114,6 +150,16 @@ addressCodec =
     )
     CA.string
 
+bigIntCodec :: CA.JsonCodec BigInt
+bigIntCodec =
+  CA.prismaticCodec "BigInt" Aeson.toBigInt Aeson.fromBigInt
+    CA.json
+
+bigNumCodec :: CA.JsonCodec BigNum
+bigNumCodec =
+  CA.prismaticCodec "BigNum" BigNum.fromBigInt BigNum.toBigInt
+    bigIntCodec
+
 byteArrayCodec :: CA.JsonCodec ByteArray
 byteArrayCodec =
   CA.prismaticCodec "ByteArray" hexToByteArray byteArrayToHex
@@ -121,6 +167,9 @@ byteArrayCodec =
 
 cborBytesCodec :: CA.JsonCodec CborBytes
 cborBytesCodec = wrapIso CborBytes byteArrayCodec
+
+coinCodec :: CA.JsonCodec Coin
+coinCodec = wrapIso Coin bigNumCodec
 
 dataHashCodec :: CA.JsonCodec DataHash
 dataHashCodec = asCborCodec "DataHash"

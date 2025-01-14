@@ -9,11 +9,15 @@ import HydraSdk.Internal.Lib.AVar (modify) as ExportAVar
 
 import HydraSdk.Internal.Lib.Codec
   ( addressCodec
+  , aesonCodec
+  , bigIntCodec
+  , bigNumCodec
   , byteArrayCodec
   , caDecodeFile
   , caDecodeString
   , caEncodeString
   , cborBytesCodec
+  , coinCodec
   , dataHashCodec
   , dateTimeCodec
   , ed25519KeyHashCodec
@@ -25,6 +29,7 @@ import HydraSdk.Internal.Lib.Codec
   , rawBytesCodec
   , readOref
   , scriptHashCodec
+  , toCaJsonDecodeError
   , txCodec
   , txHashCodec
   ) as ExportCodec

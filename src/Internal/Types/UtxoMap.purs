@@ -62,6 +62,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Foreign.Object (delete, fromFoldable, toUnfoldable) as Obj
 import HydraSdk.Internal.Lib.Codec
   ( addressCodec
+  , aesonCodec
   , cborBytesCodec
   , dataHashCodec
   , fromCaJsonDecodeError
@@ -98,9 +99,7 @@ instance DecodeAeson HydraUtxoMap where
       )
 
 hydraUtxoMapCodec :: CA.JsonCodec HydraUtxoMap
-hydraUtxoMapCodec =
-  CA.prismaticCodec "HydraUtxoMap" (hush <<< decodeAeson) encodeAeson
-    CA.json
+hydraUtxoMapCodec = aesonCodec "HydraUtxoMap"
 
 fromUtxoMap :: UtxoMap -> HydraUtxoMap
 fromUtxoMap = wrap <<< Map.toUnfoldable

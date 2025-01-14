@@ -45,10 +45,20 @@
         ];
       };
 
-      hydraFixturesFor = pkgs: pkgs.runCommand "hydra-fixtures" { }
+      hydraFixturesFor = pkgs: pkgs.runCommand "hydra-fixtures" { buildInputs = [ pkgs.jq ]; }
         ''
           mkdir $out
-          cp -r ${hydra-fixtures}/hydra-node/golden/ServerOutput $out
+          VALID_ADDR="KjgoiXJS2coTnqpCLHXFtd89Hv9ttjsE6yW4msyLXFNkykUpTsyBs85r2rDDia2uKrhdpGKCJnmFXwvPSWLe75564ixZWdTxRh7TnuaDLnHx"
+          for fixture in ${hydra-fixtures}/hydra-node/golden/ServerOutput/*; do
+            if [ -f "$fixture" ]; then
+              echo "Fixing Hydra fixture: $fixture"
+              jq --arg validAddr "$VALID_ADDR" \
+                'walk(if type == "object" and has("address") and (.address | test("^addr_test1|^addr1") | not)
+                then .address = $validAddr else . end)' \
+                "$fixture" > tmp
+              mv tmp "$out/$(basename "$fixture")"
+            fi
+          done
         '';
 
       psProjectFor = system: pkgs:

@@ -80,9 +80,11 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , ReadyToFanout
       , HeadIsAborted
       , HeadIsFinalized
-      , SnapshotConfirmed
-      , TxInvalid
       , TxValid
+      , TxInvalid
+      , SnapshotConfirmed
+      , InvalidInput
+      , PostTxOnChainFailed
       )
   , HydraNodeApi_OutMessage
       ( Init
@@ -92,10 +94,45 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , Contest
       , Fanout
       )
+  , InvalidInputMessage
   , NewTxMessage
   , PeerConnMessage
+  , PostChainTx
+      ( InitTx
+      , AbortTx
+      , CollectComTx
+      , IncrementTx
+      , DecrementTx
+      , CloseTx
+      , ContestTx
+      , FanoutTx
+      )
+  , PostTxError
+      ( NoSeedInput
+      , InvalidSeed
+      , InvalidHeadId
+      , CannotFindOwnInitial
+      , UnsupportedLegacyOutput
+      , InvalidStateToPost
+      , NotEnoughFuel
+      , NoFuelUTXOFound
+      , ScriptFailedInWallet
+      , InternalWalletError
+      , FailedToPostTx
+      , PlutusValidationFailed
+      , CommittedTooMuchADAForMainnet
+      , FailedToDraftTxNotInitializing
+      , FailedToConstructAbortTx
+      , FailedToConstructCloseTx
+      , FailedToConstructContestTx
+      , FailedToConstructCollectTx
+      , FailedToConstructDecrementTx
+      , FailedToConstructFanoutTx
+      )
+  , PostTxOnchainFailedMessage
   , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
+  , SeqTimestamp
   , SnapshotConfirmedMessage
   , TxInvalidMessage
   , TxValidMessage
@@ -105,7 +142,9 @@ import HydraSdk.Internal.Types.NodeApiMessage
   ) as ExportNodeApiMessage
 
 import HydraSdk.Internal.Types.Snapshot
-  ( HydraSnapshot(HydraSnapshot)
+  ( ConfirmedSnapshot(InitialSnapshot, ConfirmedSnapshot)
+  , HydraSnapshot(HydraSnapshot)
+  , confirmedSnapshotCodec
   , emptySnapshot
   , hydraSnapshotCodec
   ) as ExportSnapshot

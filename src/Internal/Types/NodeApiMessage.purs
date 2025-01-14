@@ -7,6 +7,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
   , HeadInitMessage
   , HeadFinalizedMessage
   , HeadOpenMessage
+  , HeadParameters
   , HydraNodeApi_InMessage
       ( Greetings
       , PeerConnected
@@ -24,6 +25,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
       , TxInvalid
       , SnapshotConfirmed
       , InvalidInput
+      , PostTxOnChainFailed
       )
   , HydraNodeApi_OutMessage
       ( Init
@@ -36,13 +38,45 @@ module HydraSdk.Internal.Types.NodeApiMessage
   , InvalidInputMessage
   , NewTxMessage
   , PeerConnMessage
+  , PostChainTx
+      ( InitTx
+      , AbortTx
+      , CollectComTx
+      , IncrementTx
+      , DecrementTx
+      , CloseTx
+      , ContestTx
+      , FanoutTx
+      )
+  , PostTxError
+      ( NoSeedInput
+      , InvalidSeed
+      , InvalidHeadId
+      , CannotFindOwnInitial
+      , UnsupportedLegacyOutput
+      , InvalidStateToPost
+      , NotEnoughFuel
+      , NoFuelUTXOFound
+      , ScriptFailedInWallet
+      , InternalWalletError
+      , FailedToPostTx
+      , PlutusValidationFailed
+      , CommittedTooMuchADAForMainnet
+      , FailedToDraftTxNotInitializing
+      , FailedToConstructAbortTx
+      , FailedToConstructCloseTx
+      , FailedToConstructContestTx
+      , FailedToConstructCollectTx
+      , FailedToConstructDecrementTx
+      , FailedToConstructFanoutTx
+      )
+  , PostTxOnchainFailedMessage
   , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
   , SeqTimestamp
   , SnapshotConfirmedMessage
   , TxInvalidMessage
   , TxValidMessage
-  , greetingsMessageCodec
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   , nextHeadStatus
@@ -51,7 +85,7 @@ module HydraSdk.Internal.Types.NodeApiMessage
 import Prelude
 
 import Aeson (Aeson)
-import Cardano.Types (PublicKey, ScriptHash)
+import Cardano.Types (Coin, PublicKey, TransactionHash)
 import Data.Codec.Argonaut (JPropCodec, JsonCodec, array, int, json, object, string) as CA
 import Data.Codec.Argonaut.Record (class RowListCodec, optional, record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
@@ -59,7 +93,7 @@ import Data.DateTime (DateTime)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Show.Generic (genericShow)
-import HydraSdk.Internal.Lib.Codec (dateTimeCodec, publicKeyCodec, scriptHashCodec)
+import HydraSdk.Internal.Lib.Codec (coinCodec, dateTimeCodec, publicKeyCodec, txHashCodec)
 import HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
       ( HeadStatus_Initializing
@@ -70,7 +104,12 @@ import HydraSdk.Internal.Types.HeadStatus
       )
   , headStatusCodec
   )
-import HydraSdk.Internal.Types.Snapshot (HydraSnapshot, hydraSnapshotCodec)
+import HydraSdk.Internal.Types.Snapshot
+  ( ConfirmedSnapshot
+  , HydraSnapshot
+  , confirmedSnapshotCodec
+  , hydraSnapshotCodec
+  )
 import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
 import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
 import Prim.Row (class Nub, class Union)
@@ -99,6 +138,7 @@ data HydraNodeApi_InMessage
   | TxInvalid TxInvalidMessage
   | SnapshotConfirmed SnapshotConfirmedMessage
   | InvalidInput InvalidInputMessage
+  | PostTxOnChainFailed PostTxOnchainFailedMessage
 
 derive instance Generic HydraNodeApi_InMessage _
 derive instance Eq HydraNodeApi_InMessage
@@ -125,6 +165,7 @@ hydraNodeApiInMessageCodec =
     , "TxInvalid": txInvalidMessageCodec
     , "SnapshotConfirmed": snapshotConfirmedMessageCodec
     , "InvalidInput": invalidInputMessageCodec
+    , "PostTxOnChainFailed": postTxOnchainFailedMessageCodec
     }
 
 -- | Determines the new Head status based on the incoming hydra-node API message.
@@ -347,14 +388,14 @@ readyToFanoutMessageCodec =
 -- | One of the participants did Abort the Head before all commits
 -- | were done or collected.
 type HeadAbortedMessage = SeqTimestamp
-  ( headId :: ScriptHash
+  ( headId :: String -- ScriptHash
   , utxo :: HydraUtxoMap
   )
 
 headAbortedMessageCodec :: CA.JPropCodec HeadAbortedMessage
 headAbortedMessageCodec =
   seqTimestampCodec
-    { headId: scriptHashCodec
+    { headId: CA.string -- scriptHashCodec
     , utxo: hydraUtxoMapCodec
     }
 
@@ -364,14 +405,14 @@ headAbortedMessageCodec =
 -- | The Head was already closed and the contestation period
 -- | is now over.
 type HeadFinalizedMessage = SeqTimestamp
-  ( headId :: ScriptHash
+  ( headId :: String -- ScriptHash
   , utxo :: HydraUtxoMap
   )
 
 headFinalizedMessageCodec :: CA.JPropCodec HeadFinalizedMessage
 headFinalizedMessageCodec =
   seqTimestampCodec
-    { headId: scriptHashCodec
+    { headId: CA.string -- scriptHashCodec
     , utxo: hydraUtxoMapCodec
     }
 
@@ -382,14 +423,14 @@ headFinalizedMessageCodec =
 -- | observes its own transactions and it may still happen that this
 -- | transaction is not included in a snapshot.
 type TxValidMessage = SeqTimestamp
-  ( headId :: ScriptHash
+  ( headId :: String -- ScriptHash
   , transaction :: HydraTx
   )
 
 txValidMessageCodec :: CA.JPropCodec TxValidMessage
 txValidMessageCodec =
   seqTimestampCodec
-    { headId: scriptHashCodec
+    { headId: CA.string -- scriptHashCodec
     , transaction: hydraTxCodec
     }
 
@@ -403,7 +444,7 @@ txValidMessageCodec =
 -- | an indication why it was not applicable to the given UTxO
 -- | (the local, seen ledger state).
 type TxInvalidMessage = SeqTimestamp
-  ( headId :: ScriptHash
+  ( headId :: String -- ScriptHash
   , utxo :: HydraUtxoMap
   , transaction :: HydraTx
   , validationError :: { reason :: String }
@@ -412,7 +453,7 @@ type TxInvalidMessage = SeqTimestamp
 txInvalidMessageCodec :: CA.JPropCodec TxInvalidMessage
 txInvalidMessageCodec =
   seqTimestampCodec
-    { headId: scriptHashCodec
+    { headId: CA.string -- scriptHashCodec
     , utxo: hydraUtxoMapCodec
     , transaction: hydraTxCodec
     , validationError:
@@ -427,14 +468,14 @@ txInvalidMessageCodec =
 -- | The given snapshot has been multi-signed by all Head participants
 -- | and is now confirmed.
 type SnapshotConfirmedMessage = SeqTimestamp
-  ( headId :: ScriptHash
+  ( headId :: String -- ScriptHash
   , snapshot :: HydraSnapshot
   )
 
 snapshotConfirmedMessageCodec :: CA.JPropCodec SnapshotConfirmedMessage
 snapshotConfirmedMessageCodec =
   seqTimestampCodec
-    { headId: scriptHashCodec
+    { headId: CA.string -- scriptHashCodec
     , snapshot: hydraSnapshotCodec
     }
 
@@ -454,6 +495,267 @@ invalidInputMessageCodec =
   seqTimestampCodec
     { reason: CA.string
     , input: CA.string
+    }
+
+----------------------------------------------------------------------
+-- 16. PostTxOnchainFailedMessage
+
+-- | Something wrong happened when trying to post a transaction
+-- | on-chain. Provides information about what kind of transaction was
+-- | tentatively posted, and the reason for failure.
+type PostTxOnchainFailedMessage = SeqTimestamp
+  ( postChainTx :: PostChainTx
+  , postTxError :: PostTxError
+  )
+
+postTxOnchainFailedMessageCodec :: CA.JPropCodec PostTxOnchainFailedMessage
+postTxOnchainFailedMessageCodec =
+  seqTimestampCodec
+    { postChainTx: postChainTxCodec
+    , postTxError: postTxErrorCodec
+    }
+
+type HeadParameters =
+  { contestationPeriod :: Int
+  , parties :: Array { vkey :: PublicKey }
+  }
+
+headParametersCodec :: CA.JsonCodec HeadParameters
+headParametersCodec =
+  CA.object "HeadParameters" $ CAR.record
+    { contestationPeriod: CA.int
+    , parties:
+        CA.array $ CA.object "HeadParameters:parties" $ CAR.record
+          { vkey: publicKeyCodec
+          }
+    }
+
+-- | Outgoing on-chain transaction for the Head protocol.
+-- | Reference: https://github.com/cardano-scaling/hydra/blob/1ffe7c6b505e3f38b5546ae5e5b97de26bc70425/hydra-node/src/Hydra/Chain.hs#L51-L75
+data PostChainTx
+  = InitTx
+      { participants :: Array String
+      , headParameters :: HeadParameters
+      }
+  | AbortTx
+      { utxo :: HydraUtxoMap
+      , headSeed :: String
+      }
+  | CollectComTx
+      { utxo :: HydraUtxoMap
+      , headId :: String
+      , headParameters :: HeadParameters
+      }
+  | IncrementTx
+      { headId :: String
+      , headParameters :: HeadParameters
+      , incrementingSnapshot :: ConfirmedSnapshot
+      , depositTxId :: TransactionHash
+      }
+  | DecrementTx
+      { headId :: String
+      , headParameters :: HeadParameters
+      , decrementingSnapshot :: ConfirmedSnapshot
+      }
+  | CloseTx
+      { headId :: String
+      , headParameters :: HeadParameters
+      , closingSnapshot :: ConfirmedSnapshot
+      , openVersion :: Int
+      }
+  | ContestTx
+      { headId :: String
+      , headParameters :: HeadParameters
+      , contestingSnapshot :: ConfirmedSnapshot
+      , openVersion :: Int
+      }
+  | FanoutTx
+      { utxo :: HydraUtxoMap
+      , utxoToDecommit :: HydraUtxoMap
+      , headSeed :: String
+      , contestationDeadline :: DateTime
+      }
+
+derive instance Generic PostChainTx _
+derive instance Eq PostChainTx
+
+instance Show PostChainTx where
+  show = genericShow
+
+postChainTxCodec :: CA.JsonCodec PostChainTx
+postChainTxCodec =
+  CAS.sumFlat "PostChainTx"
+    { "InitTx":
+        CAR.record
+          { participants: CA.array CA.string
+          , headParameters: headParametersCodec
+          }
+    , "AbortTx":
+        CAR.record
+          { utxo: hydraUtxoMapCodec
+          , headSeed: CA.string
+          }
+    , "CollectComTx":
+        CAR.record
+          { utxo: hydraUtxoMapCodec
+          , headId: CA.string
+          , headParameters: headParametersCodec
+          }
+    , "IncrementTx":
+        CAR.record
+          { headId: CA.string
+          , headParameters: headParametersCodec
+          , incrementingSnapshot: confirmedSnapshotCodec
+          , depositTxId: txHashCodec
+          }
+    , "DecrementTx":
+        CAR.record
+          { headId: CA.string
+          , headParameters: headParametersCodec
+          , decrementingSnapshot: confirmedSnapshotCodec
+          }
+    , "CloseTx":
+        CAR.record
+          { headId: CA.string
+          , headParameters: headParametersCodec
+          , closingSnapshot: confirmedSnapshotCodec
+          , openVersion: CA.int
+          }
+    , "ContestTx":
+        CAR.record
+          { headId: CA.string
+          , headParameters: headParametersCodec
+          , contestingSnapshot: confirmedSnapshotCodec
+          , openVersion: CA.int
+          }
+    , "FanoutTx":
+        CAR.record
+          { utxo: hydraUtxoMapCodec
+          , utxoToDecommit: hydraUtxoMapCodec
+          , headSeed: CA.string
+          , contestationDeadline: dateTimeCodec
+          }
+    }
+
+-- | Possible transaction submission errors.
+-- |
+-- | `NoSeedInput`: Initialising a new Head failed because the DirectChain
+-- | component was unable to find a "seed" UTxO to consume. This can happen if
+-- | no UTxO has been assigned to the internal wallet's address for this
+-- | purpose, or if the component is still catching up with the chain. This
+-- | error is usually transient and clients should retry to post
+-- | the transaction.
+-- |
+-- | `InvalidSeed`: Raised if the user fails to submit an abort or fanout tx
+-- | using the wrong seed.
+-- |
+-- | `InvalidHeadId`: Raised if the user fails to submit a commit tx using
+-- | the wrong headId.
+-- |
+-- | `CannotFindOwnInitial`: The DirectChain was unable to find the output
+-- | paying to Initial script corresponding to this node's Party, with the
+-- | relevant Participation Token.
+-- |
+-- | `UnsupportedLegacyOutput`: The UTxO provided to commit is locked by
+-- | a (legacy) Byron address, which is not supported. 
+-- |
+-- | `InvalidStateToPost`: Attempted to post a transaction that's invalid given
+-- | current protocol's state. This is definitely a BUG.
+-- |
+-- | `NotEnoughFuel`: Raised if the internal wallet could not find a fuel output
+-- | with enough Lovelace to balance a transaction. 
+-- |
+-- | `NoFuelUTXOFound`: Raised if the internal wallet could not find a fuel
+-- | output.
+-- |
+-- | `ScriptFailedInWallet`: Script execution failed when finalizing
+-- | a transaction in the wallet. The redeemer pointer should give an indication
+-- | which script failed while the reason is a dump of the error.
+-- |
+-- | `InternalWalletError`:  Some input in a transaction cannot be resolved to
+-- | a proper UTxO. This can happen either when some input is double-spent or
+-- | the DirectChain component has not yet caught up with the chain.
+-- |
+-- | `FailedToPostTx`: A generic error case. Some transaction that wasn't
+-- | expected to fail still failed... somehow.
+-- |
+-- | `PlutusValidationFailed`: An internal transaction created by the Hydra node
+-- | failed with Plutus errors.
+-- |
+-- | `CommittedTooMuchADAForMainnet`: Raised if the user tries to commit more
+-- | than 100 ADA while on the mainnet network.
+-- |
+-- | `FailedToDraftTxNotInitializing`: Raised if the user tried to draft
+-- | a commit tx while Head is not in Initializing state.
+-- |
+-- | Reference: https://github.com/cardano-scaling/hydra/blob/1ffe7c6b505e3f38b5546ae5e5b97de26bc70425/hydra-node/src/Hydra/Chain.hs#L135-L171
+data PostTxError
+  = NoSeedInput
+  | InvalidSeed { headSeed :: String }
+  | InvalidHeadId { headId :: String }
+  | CannotFindOwnInitial { knownUTxO :: HydraUtxoMap }
+  | UnsupportedLegacyOutput { byronAddress :: String }
+  | InvalidStateToPost { chainState :: Aeson, txTried :: Aeson }
+  | NotEnoughFuel
+  | NoFuelUTXOFound
+  | ScriptFailedInWallet { redeemerPtr :: String, failureReason :: String }
+  | InternalWalletError { tx :: HydraTx, reason :: String, headUTxO :: HydraUtxoMap }
+  | FailedToPostTx { failureReason :: String }
+  | PlutusValidationFailed { plutusFailure :: String, plutusDebugInfo :: String }
+  | CommittedTooMuchADAForMainnet
+      { userCommittedLovelace :: Coin
+      , mainnetLimitLovelace :: Coin
+      }
+  | FailedToDraftTxNotInitializing
+  | FailedToConstructAbortTx
+  | FailedToConstructCloseTx
+  | FailedToConstructContestTx
+  | FailedToConstructCollectTx
+  | FailedToConstructDecrementTx
+  | FailedToConstructFanoutTx
+
+derive instance Generic PostTxError _
+derive instance Eq PostTxError
+
+instance Show PostTxError where
+  show = genericShow
+
+postTxErrorCodec :: CA.JsonCodec PostTxError
+postTxErrorCodec =
+  CAS.sumFlat "PostTxError"
+    { "NoSeedInput": unit
+    , "InvalidSeed": CAR.record { headSeed: CA.string }
+    , "InvalidHeadId": CAR.record { headId: CA.string }
+    , "CannotFindOwnInitial": CAR.record { knownUTxO: hydraUtxoMapCodec }
+    , "UnsupportedLegacyOutput": CAR.record { byronAddress: CA.string }
+    , "InvalidStateToPost": CAR.record { chainState: CA.json, txTried: CA.json }
+    , "NotEnoughFuel": unit
+    , "NoFuelUTXOFound": unit
+    , "ScriptFailedInWallet": CAR.record { redeemerPtr: CA.string, failureReason: CA.string }
+    , "InternalWalletError":
+        CAR.record
+          { tx: hydraTxCodec
+          , reason: CA.string
+          , headUTxO: hydraUtxoMapCodec
+          }
+    , "FailedToPostTx": CAR.record { failureReason: CA.string }
+    , "PlutusValidationFailed":
+        CAR.record
+          { plutusFailure: CA.string
+          , plutusDebugInfo: CA.string
+          }
+    , "CommittedTooMuchADAForMainnet":
+        CAR.record
+          { userCommittedLovelace: coinCodec
+          , mainnetLimitLovelace: coinCodec
+          }
+    , "FailedToDraftTxNotInitializing": unit
+    , "FailedToConstructAbortTx": unit
+    , "FailedToConstructCloseTx": unit
+    , "FailedToConstructContestTx": unit
+    , "FailedToConstructCollectTx": unit
+    , "FailedToConstructDecrementTx": unit
+    , "FailedToConstructFanoutTx": unit
     }
 
 ----------------------------------------------------------------------

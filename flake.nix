@@ -31,6 +31,19 @@
     let
       projectName = "purescript-hydra-sdk";
       supportedSystems = [ "x86_64-linux" ];
+
+      pursBuildOptions = {
+        strictComp = true;
+        censorCodes = [
+          "ImplicitImport"
+          "ImplicitQualifiedImport"
+          "ImplicitQualifiedImportReExport"
+          "UserDefinedWarning"
+          "MissingKindDeclaration"
+          "MissingTypeDeclaration"
+        ];
+      };
+
       perSystem = nixpkgs.lib.genAttrs supportedSystems;
 
       nixpkgsFor = system: import nixpkgs {
@@ -61,7 +74,24 @@
           done
         '';
 
-      psProjectFor = system: pkgs: hydraFixtures:
+      minimalExampleFor = system: pkgs:
+        pkgs.purescriptProject rec {
+          inherit pkgs;
+          projectName = "purescript-hydra-sdk-example-minimal";
+          src = builtins.path {
+            path = ./.;
+            name = "${projectName}-src";
+            filter = path: ftype:
+              !(pkgs.lib.hasSuffix ".md" path) &&
+              (builtins.baseNameOf path != "flake.nix") &&
+              !(ftype == "directory" && builtins.baseNameOf path == "docker");
+          };
+          packageJson = ./example/minimal/package.json;
+          packageLock = ./example/minimal/package-lock.json;
+          spagoPackages = ./example/minimal/spago-packages.nix;
+        };
+
+      hydraSdkFor = system: pkgs: hydraFixtures:
         pkgs.purescriptProject rec {
           inherit pkgs projectName;
           src = builtins.path {
@@ -98,7 +128,30 @@
           hydraFixtures = hydraFixturesFor pkgs;
         in
         {
-          default = (psProjectFor system pkgs hydraFixtures).devShell;
+          default = (hydraSdkFor system pkgs hydraFixtures).devShell;
+        }
+      );
+
+      packages = perSystem (system:
+        let
+          pkgs = nixpkgsFor system;
+          project = minimalExampleFor system pkgs;
+          minimalExample = project.buildPursProject {
+            inherit (pursBuildOptions) strictComp censorCodes;
+          };
+        in
+        {
+          hydra-sdk-example-minimal = pkgs.writeShellApplication {
+            name = "hydra-sdk-example-minimal";
+            text = ''
+              TEMPD=$(mktemp -d)
+              cd "$TEMPD"
+              cp -r ${minimalExample}/* .
+              ln -sfn ${project.nodeModules}/lib/node_modules node_modules
+              node --enable-source-maps -e 'import("./output/HydraSdk.Example.Minimal.Main/index.js").then(m => m.main())' \
+                -- hydra-sdk-example-minimal "$@"
+            '';
+          };
         }
       );
 
@@ -118,17 +171,9 @@
         let
           pkgs = nixpkgsFor system;
           hydraFixtures = hydraFixturesFor pkgs;
-          project = psProjectFor system pkgs hydraFixtures;
+          project = hydraSdkFor system pkgs hydraFixtures;
           builtProject = project.buildPursProject {
-            strictComp = true;
-            censorCodes = [
-              "ImplicitImport"
-              "ImplicitQualifiedImport"
-              "ImplicitQualifiedImportReExport"
-              "UserDefinedWarning"
-              "MissingKindDeclaration"
-              "MissingTypeDeclaration"
-            ];
+            inherit (pursBuildOptions) strictComp censorCodes;
           };
         in
         {

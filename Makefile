@@ -1,6 +1,7 @@
 .PHONY: build, test, format, repl, docs, build-example, run-example, docker-cleanup, gen-keys
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
+js-sources := $(shell fd --no-ignore-parent -ejs)
 nix-sources := $(shell fd --no-ignore-parent -enix --exclude='spago*')
 purs-args := "--stash --censor-lib --censor-codes=ImplicitImport,ImplicitQualifiedImport,ImplicitQualifiedImportReExport,UserDefinedWarning"
 example-docker := example/minimal/docker/cluster/docker-compose.yaml
@@ -19,8 +20,13 @@ test: requires-nix-shell
 	spago run --main Test.Main
 
 format: requires-nix-shell
-	@purs-tidy format-in-place ${ps-sources}
-	@nixpkgs-fmt ${nix-sources}
+	@echo '1. Formatting PureScript sources:'
+	purs-tidy format-in-place ${ps-sources}
+	@echo -e '\n2. Formatting JavaScript sources:'
+	prettier -w ${js-sources}
+	@echo -e '\n3. Formatting Nix sources:'
+	nixpkgs-fmt ${nix-sources}
+	@echo -e '\n4. Generating table of contents for Markdown files:'
 	doctoc README.md --github --notitle
 
 repl: requires-nix-shell

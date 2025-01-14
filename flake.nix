@@ -121,6 +121,8 @@
               "ImplicitQualifiedImport"
               "ImplicitQualifiedImportReExport"
               "UserDefinedWarning"
+              "MissingKindDeclaration"
+              "MissingTypeDeclaration"
             ];
           };
         in
@@ -137,8 +139,8 @@
             ''
               cd ${self}
               purs-tidy check $(fd -epurs)
-              nixpkgs-fmt --check $(fd -enix --exclude='spago*')
               prettier -c $(fd -ejs)
+              nixpkgs-fmt --check $(fd -enix --exclude='spago*')
               touch $out
             '';
         }

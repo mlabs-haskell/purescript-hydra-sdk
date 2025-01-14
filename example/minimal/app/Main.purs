@@ -181,7 +181,7 @@ messageHandler ws =
                 Nothing ->
                   throwError $ Error.error "Could not decode CommitTx CBOR"
         HeadIsOpen { headId, utxo } -> do
-          logInfo' $ "Head ID: " <> cborBytesToHex (encodeCbor headId)
+          logInfo' $ "Head ID: " <> headId
           setUtxoSnapshot $ HydraSnapshot
             { snapshotNumber: zero
             , utxo

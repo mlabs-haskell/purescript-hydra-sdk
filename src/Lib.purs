@@ -1,27 +1,27 @@
+-- | Useful stuff for building an application with HydraSdk.
 module HydraSdk.Lib
   ( module ExportAVar
   , module ExportCodec
   , module ExportLogger
-  , module ExportTransaction
   ) where
 
 import HydraSdk.Internal.Lib.AVar (modify) as ExportAVar
 
 import HydraSdk.Internal.Lib.Codec
-  ( class FromVariantGeneric
-  , class ToVariantGeneric
-  , addressCodec
+  ( addressCodec
+  , aesonCodec
+  , bigIntCodec
+  , bigNumCodec
   , byteArrayCodec
   , caDecodeFile
   , caDecodeString
   , caEncodeString
   , cborBytesCodec
+  , coinCodec
   , dataHashCodec
   , dateTimeCodec
   , ed25519KeyHashCodec
-  , fixTaggedSumCodec
   , fromCaJsonDecodeError
-  , fromVariantGeneric
   , logLevelCodec
   , orefCodec
   , printOref
@@ -29,15 +29,16 @@ import HydraSdk.Internal.Lib.Codec
   , rawBytesCodec
   , readOref
   , scriptHashCodec
-  , sumGenericCodec
-  , toVariantGeneric
+  , toCaJsonDecodeError
   , txCodec
   , txHashCodec
   ) as ExportCodec
 
-import HydraSdk.Internal.Lib.Logger (log') as ExportLogger
-
-import HydraSdk.Internal.Lib.Transaction
-  ( reSignTransaction
-  , setAuxDataHash
-  ) as ExportTransaction
+import HydraSdk.Internal.Lib.Logger
+  ( log'
+  , logDebug
+  , logError
+  , logInfo
+  , logTrace
+  , logWarn
+  ) as ExportLogger

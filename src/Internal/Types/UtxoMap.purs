@@ -8,6 +8,16 @@ module HydraSdk.Internal.Types.UtxoMap
 
 import Prelude
 
+import Aeson
+  ( class DecodeAeson
+  , class EncodeAeson
+  , Aeson
+  , decodeAeson
+  , encodeAeson
+  , (.:)
+  , (.:?)
+  )
+import Aeson (fromObject) as Aeson
 import Cardano.AsCbor (decodeCbor, encodeCbor)
 import Cardano.Plutus.Types.CurrencySymbol (mkCurrencySymbol)
 import Cardano.Plutus.Types.TokenName (mkTokenName)
@@ -19,40 +29,24 @@ import Cardano.Types
   , DataHash
   , Language(PlutusV1, PlutusV2, PlutusV3)
   , OutputDatum(OutputDatum, OutputDatumHash)
+  , PlutusData(Constr, Map, List, Integer, Bytes)
   , PlutusScript(PlutusScript)
   , ScriptRef(NativeScriptRef, PlutusScriptRef)
   , TransactionInput
   , TransactionOutput(TransactionOutput)
+  , UtxoMap
   , Value(Value)
   )
 import Cardano.Types.AssetName (unAssetName)
-import Cardano.Types.BigNum (fromBigInt, toBigInt) as BigNum
 import Cardano.Types.DataHash (hashPlutusData)
 import Cardano.Types.OutputDatum (outputDatumDataHash, outputDatumDatum)
-import Contract.CborBytes (cborBytesToHex)
-import Contract.PlutusData (PlutusData(Constr, Map, List, Integer, Bytes))
-import Contract.Prim.ByteArray (byteArrayToHex, hexToByteArray)
-import Contract.Utxos (UtxoMap)
 import Control.Alt ((<|>))
-import Control.Monad.Maybe.Trans (MaybeT(MaybeT), runMaybeT)
-import Control.Monad.Trans.Class (lift)
 import Control.Safely (foldM)
-import Data.Argonaut
-  ( class DecodeJson
-  , class EncodeJson
-  , Json
-  , JsonDecodeError(AtKey, TypeMismatch, UnexpectedValue)
-  , decodeJson
-  , encodeJson
-  , fromNumber
-  , fromObject
-  , fromString
-  , (.:)
-  , (.:?)
-  )
+import Data.Argonaut (JsonDecodeError(AtKey, TypeMismatch, UnexpectedValue), fromString)
 import Data.Array ((:))
 import Data.Bifunctor (bimap, lmap)
 import Data.Bitraversable (bitraverse)
+import Data.ByteArray (byteArrayToHex, hexToByteArray)
 import Data.Codec.Argonaut (JsonCodec, decode, encode, json, object, prismaticCodec) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Generic (nullarySum) as CAG
@@ -68,14 +62,14 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Foreign.Object (delete, fromFoldable, toUnfoldable) as Obj
 import HydraSdk.Internal.Lib.Codec
   ( addressCodec
+  , aesonCodec
   , cborBytesCodec
   , dataHashCodec
   , fromCaJsonDecodeError
   , printOref
   , readOref
   )
-import JS.BigInt (BigInt)
-import JS.BigInt (fromNumber, toNumber) as BigInt
+import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 
 newtype HydraUtxoMap = HydraUtxoMap (Array (TransactionInput /\ TransactionOutput))
 
@@ -88,16 +82,16 @@ derive newtype instance Monoid HydraUtxoMap
 instance Show HydraUtxoMap where
   show = genericShow
 
-instance EncodeJson HydraUtxoMap where
-  encodeJson =
-    fromObject
+instance EncodeAeson HydraUtxoMap where
+  encodeAeson =
+    Aeson.fromObject
       <<< Obj.fromFoldable
       <<< map (bimap printOref (CA.encode txOutCodec))
       <<< unwrap
 
-instance DecodeJson HydraUtxoMap where
-  decodeJson =
-    (map Obj.toUnfoldable <<< decodeJson) >=>
+instance DecodeAeson HydraUtxoMap where
+  decodeAeson =
+    (map Obj.toUnfoldable <<< decodeAeson) >=>
       ( map wrap <<< traverse
           ( bitraverse (note (TypeMismatch "TransactionInput") <<< readOref)
               (lmap fromCaJsonDecodeError <<< CA.decode txOutCodec)
@@ -105,9 +99,7 @@ instance DecodeJson HydraUtxoMap where
       )
 
 hydraUtxoMapCodec :: CA.JsonCodec HydraUtxoMap
-hydraUtxoMapCodec =
-  CA.prismaticCodec "HydraUtxoMap" (hush <<< decodeJson) encodeJson
-    CA.json
+hydraUtxoMapCodec = aesonCodec "HydraUtxoMap"
 
 fromUtxoMap :: UtxoMap -> HydraUtxoMap
 fromUtxoMap = wrap <<< Map.toUnfoldable
@@ -224,36 +216,28 @@ valueCodec =
   CA.prismaticCodec "Value" (hush <<< decodeValue) encodeValue
     CA.json
 
-encodeValue :: Value -> Json
+encodeValue :: Value -> Aeson
 encodeValue (Value coin multiAsset) =
-  fromObject $ Obj.delete mempty $
+  Aeson.fromObject $ Obj.delete mempty $
     Obj.fromFoldable (lovelace : nonAdaAssets)
   where
-  lovelace :: String /\ Json
-  lovelace = "lovelace" /\ encodeJson (BigInt.toNumber $ BigNum.toBigInt $ unwrap coin)
+  lovelace :: String /\ Aeson
+  lovelace = "lovelace" /\ encodeAeson coin
 
-  nonAdaAssets :: Array (String /\ Json)
+  nonAdaAssets :: Array (String /\ Aeson)
   nonAdaAssets =
     (Map.toUnfoldable :: _ -> Array _) (unwrap multiAsset) <#> \(cs /\ mp) ->
       cborBytesToHex (encodeCbor cs) /\
-        ( fromObject $ Obj.fromFoldable $
+        ( Aeson.fromObject $ Obj.fromFoldable $
             (Map.toUnfoldable :: _ -> Array _) mp <#> \(tn /\ quantity) ->
-              byteArrayToHex (unAssetName tn) /\ encodeJson
-                (BigInt.toNumber $ BigNum.toBigInt quantity)
+              byteArrayToHex (unAssetName tn) /\ encodeAeson quantity
         )
 
-decodeValue :: Json -> Either JsonDecodeError Value
+decodeValue :: Aeson -> Either JsonDecodeError Value
 decodeValue json = do
-  obj <- decodeJson json
+  obj <- decodeAeson json
   let
     lovelaceKey = "lovelace"
-
-    decodeLovelace :: Either JsonDecodeError (Maybe BigInt)
-    decodeLovelace =
-      runMaybeT do
-        lovelaceNum <- MaybeT $ obj .:? lovelaceKey
-        lift $ BigInt.fromNumber lovelaceNum #
-          note (AtKey lovelaceKey $ UnexpectedValue $ fromNumber lovelaceNum)
 
     decodeNonAdaAssets :: Either JsonDecodeError Plutus.Value
     decodeNonAdaAssets =
@@ -261,12 +245,10 @@ decodeValue json = do
         ( \acc (csStr /\ tnList) -> do
             cs <- note (TypeMismatch "CurrencySymbol") $ mkCurrencySymbol =<< hexToByteArray
               csStr
-            tnObj <- Obj.toUnfoldable <$> decodeJson tnList
+            tnObj <- Obj.toUnfoldable <$> decodeAeson tnList
             foldM
-              ( \acc' (tnStr /\ quantityNum) -> do
+              ( \acc' (tnStr /\ quantity) -> do
                   tn <- note (TypeMismatch "TokenName") $ mkTokenName =<< hexToByteArray tnStr
-                  quantity <- BigInt.fromNumber quantityNum #
-                    note (AtKey tnStr $ UnexpectedValue $ fromNumber quantityNum)
                   pure $ acc' <> Plutus.Value.singleton cs tn quantity
               )
               acc
@@ -275,7 +257,7 @@ decodeValue json = do
         mempty
         (Obj.toUnfoldable $ Obj.delete lovelaceKey obj)
 
-  lovelace <- decodeLovelace
+  lovelace <- obj .:? lovelaceKey
   nonAdaAssets <- decodeNonAdaAssets
   let plutusValue = nonAdaAssets <> maybe mempty Plutus.Value.lovelaceValueOf lovelace
   note (TypeMismatch "Cardano.Value") $ Plutus.Value.toCardano plutusValue
@@ -287,43 +269,39 @@ plutusDataCodec =
   CA.prismaticCodec "PlutusData" (hush <<< decodePlutusData) encodePlutusData
     CA.json
 
--- TODO: Switch to Aeson to avoid precision issues when handling large Numbers
-encodePlutusData :: PlutusData -> Json
+encodePlutusData :: PlutusData -> Aeson
 encodePlutusData = case _ of
-  Constr constr fields ->
-    encodeJson
-      { constructor: BigInt.toNumber $ BigNum.toBigInt constr
+  Constr constructor fields ->
+    encodeAeson
+      { constructor
       , fields: encodePlutusData <$> fields
       }
   Map kvs ->
-    encodeJson
+    encodeAeson
       { map:
           kvs <#> \(k /\ v) ->
             { k: encodePlutusData k, v: encodePlutusData v }
       }
   List xs ->
-    encodeJson
+    encodeAeson
       { list: encodePlutusData <$> xs
       }
-  Integer bi ->
-    encodeJson
-      { int: BigInt.toNumber bi
-      }
-  Bytes ba ->
-    encodeJson
-      { bytes: byteArrayToHex ba
-      }
+  Integer int -> encodeAeson { int }
+  Bytes bytes -> encodeAeson { bytes }
 
-decodePlutusData :: Json -> Either JsonDecodeError PlutusData
+decodePlutusData :: Aeson -> Either JsonDecodeError PlutusData
 decodePlutusData json = do
-  obj <- decodeJson json
+  obj <- decodeAeson json
   let
     decodeConstr = do
-      let constrKey = "constructor"
-      constrNum <- obj .: constrKey
-      constr <- (BigNum.fromBigInt =<< BigInt.fromNumber constrNum) #
-        note (AtKey constrKey $ UnexpectedValue $ fromNumber constrNum)
+      -- NOTE: The "constructor" property MUST be decoded after the
+      -- "fields" property. The "constructor" is a prototype property
+      -- and requires special handling. In JavaScript, objects with
+      -- prototypes may inherit it, which will cause Aeson to throw
+      -- cryptic errors when encountered.
+      -- To avoid this, ensure that "fields" is decoded first.
       fields <- obj .: "fields"
+      constr <- obj .: "constructor"
       Constr constr <$> traverse decodePlutusData fields
 
     decodeMap = do
@@ -337,11 +315,7 @@ decodePlutusData json = do
       list <- obj .: "list"
       List <$> traverse decodePlutusData list
 
-    decodeInteger = do
-      let key = "int"
-      num <- obj .: key
-      Integer <$> BigInt.fromNumber num #
-        note (AtKey key $ UnexpectedValue $ fromNumber num)
+    decodeInteger = Integer <$> obj .: "int"
 
     decodeBytes = do
       let key = "bytes"

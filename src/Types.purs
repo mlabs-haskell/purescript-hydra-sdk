@@ -1,6 +1,8 @@
+-- | Re-exports various Hydra domain-specific types
+-- | (such as `HydraHeadStatus` and `HydraNodeApi_InMessage`),
+-- | along with other utility types (e.g., `HostPort` and `Network`).
 module HydraSdk.Types
-  ( module ExportArgonautJson
-  , module ExportCommitRequest
+  ( module ExportCommitRequest
   , module ExportHeadStatus
   , module ExportHostPort
   , module ExportHttpError
@@ -15,11 +17,6 @@ import HydraSdk.Internal.Http.Error
   ( AffjaxError(AffjaxError)
   , HttpError(DecodeJsonError, HttpRequestError, HttpResponseError)
   ) as ExportHttpError
-
-import HydraSdk.Internal.Types.ArgonautJson
-  ( ArgonautJson(ArgonautJson)
-  , argonautJsonCodec
-  ) as ExportArgonautJson
 
 import HydraSdk.Internal.Types.CommitRequest
   ( HydraCommitRequest(SimpleCommitRequest, FullCommitRequest)
@@ -62,7 +59,8 @@ import HydraSdk.Internal.Types.Network
   ) as ExportNetwork
 
 import HydraSdk.Internal.Types.NodeApiMessage
-  ( CommittedMessage
+  ( CommandFailedMessage
+  , CommittedMessage
   , GreetingsMessage
   , HeadAbortedMessage
   , HeadClosedMessage
@@ -83,9 +81,13 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , ReadyToFanout
       , HeadIsAborted
       , HeadIsFinalized
-      , SnapshotConfirmed
-      , TxInvalid
       , TxValid
+      , TxInvalid
+      , SnapshotConfirmed
+      , InvalidInput
+      , PostTxOnChainFailed
+      , CommandFailed
+      , IgnoredHeadInitializing
       )
   , HydraNodeApi_OutMessage
       ( Init
@@ -95,19 +97,58 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , Contest
       , Fanout
       )
+  , IgnoredHeadInitMessage
+  , InvalidInputMessage
   , NewTxMessage
   , PeerConnMessage
+  , PostChainTx
+      ( InitTx
+      , AbortTx
+      , CollectComTx
+      , IncrementTx
+      , DecrementTx
+      , CloseTx
+      , ContestTx
+      , FanoutTx
+      )
+  , PostTxError
+      ( NoSeedInput
+      , InvalidSeed
+      , InvalidHeadId
+      , CannotFindOwnInitial
+      , UnsupportedLegacyOutput
+      , InvalidStateToPost
+      , NotEnoughFuel
+      , NoFuelUTXOFound
+      , ScriptFailedInWallet
+      , InternalWalletError
+      , FailedToPostTx
+      , PlutusValidationFailed
+      , CommittedTooMuchADAForMainnet
+      , FailedToDraftTxNotInitializing
+      , FailedToConstructAbortTx
+      , FailedToConstructCloseTx
+      , FailedToConstructContestTx
+      , FailedToConstructCollectTx
+      , FailedToConstructDecrementTx
+      , FailedToConstructFanoutTx
+      )
+  , PostTxOnchainFailedMessage
   , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
+  , SeqTimestamp
   , SnapshotConfirmedMessage
   , TxInvalidMessage
   , TxValidMessage
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
+  , nextHeadStatus
   ) as ExportNodeApiMessage
 
 import HydraSdk.Internal.Types.Snapshot
-  ( HydraSnapshot(HydraSnapshot)
+  ( ConfirmedSnapshot(InitialSnapshot, ConfirmedSnapshot)
+  , HydraSnapshot(HydraSnapshot)
+  , confirmedSnapshotCodec
   , emptySnapshot
   , hydraSnapshotCodec
   ) as ExportSnapshot

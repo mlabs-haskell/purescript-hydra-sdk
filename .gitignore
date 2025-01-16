@@ -3,6 +3,8 @@
 /example/minimal/output/
 /example/minimal/.psa-stash
 /example/minimal/.spago/
+/example/minimal/.spago2nix/
+/generated-docs/
 /node_modules
 /output/
 /result
@@ -10,3 +12,4 @@
 /.psci_modules/
 /.spago/
 /.spago2nix/
+.psc-ide-port

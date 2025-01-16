@@ -1,3 +1,5 @@
+-- | This module provides an interface for establishing a connection
+-- | and interacting with the hydra-node WebSocket API.
 module HydraSdk.Internal.NodeApi.WebSocket
   ( HydraNodeApiHandlers
   , HydraNodeApiWebSocket
@@ -10,24 +12,28 @@ module HydraSdk.Internal.NodeApi.WebSocket
 import Prelude
 
 import Cardano.Types (Transaction)
-import Contract.Log (logInfo', logTrace')
 import Control.Monad.Logger.Class (class MonadLogger)
 import Control.Monad.Rec.Class (class MonadRec)
-import Data.Either (Either)
+import Data.Either (Either(Right))
+import Data.Maybe (Maybe(Just))
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
+import HydraSdk.Internal.Lib.Logger (logInfo, logTrace)
 import HydraSdk.Internal.Lib.Retry (retry)
-import HydraSdk.Internal.Lib.WebSocket (Url, WebSocket, mkWebSocket)
-import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed))
+import HydraSdk.Internal.Lib.WebSocket (WebSocket, WebSocketUrl, mkWebSocket)
+import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed), printHeadStatus)
 import HydraSdk.Internal.Types.NodeApiMessage
   ( HydraNodeApi_InMessage
   , HydraNodeApi_OutMessage(Init, Abort, NewTx, Close, Contest, Fanout)
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
+  , nextHeadStatus
   )
 import HydraSdk.Internal.Types.Tx (mkHydraTx)
 
+-- | A record with operations that can be executed by the client to interact
+-- | with the hydra-node WebSocket API.
 type HydraNodeApiWebSocket (m :: Type -> Type) =
   { baseWs :: WebSocket m HydraNodeApi_InMessage HydraNodeApi_OutMessage
   , initHead :: Effect Unit
@@ -38,29 +44,42 @@ type HydraNodeApiWebSocket (m :: Type -> Type) =
   , fanout :: Effect Unit
   }
 
+-- | Handlers to attach to the hydra-node API WebSocket connection.
+-- |
+-- | `messageHandler`: Attempts to decode incoming messages to
+-- | `HydraNodeApi_InMessage`. On decoding failure, logs the error and passes
+-- | the raw message instead.
+-- |
+-- | `headStatusHandler`: Optional callback executed whenever the Head status
+-- | changes. **NOTE**: If provided, the `headStatusHandler` is guaranteed to be
+-- | called before `messageHandler`.
 type HydraNodeApiHandlers (m :: Type -> Type) =
   { connectHandler :: HydraNodeApiWebSocket m -> m Unit
   , errorHandler :: HydraNodeApiWebSocket m -> String -> m Unit
   , messageHandler :: HydraNodeApiWebSocket m -> Either String HydraNodeApi_InMessage -> m Unit
-  -- ^ Attempts to decode incoming messages to `HydraNodeApi_InMessage`.
-  -- On decoding failure, logs the error and passes the raw message instead.
+  , headStatusHandler :: Maybe (HydraHeadStatus -> m Unit)
   }
 
+-- | Configuration parameters for the hydra-node API WebSocket. 
+-- |
+-- | `url`: Address of the hydra-node API WebSocket.
+-- |
+-- | `runM`: Since the handlers of the underlying raw WebSocket are executed in
+-- | the `Effect` monad, this function allows running client monad
+-- | computations within that context.
+-- |
+-- | `handlers`: Handlers to attach to the established WebSocket connection.
+-- |
+-- | `txRetryStrategies`: Retry strategies for transactions that may be silently
+-- |  dropped by the cardano-node due to limitations of the hydra-node.
 type HydraNodeApiWebSocketBuilder (m :: Type -> Type) =
-  { url :: Url
-  -- ^ Address of the hydra-node API WebSocket.
+  { url :: WebSocketUrl
   , runM :: m Unit -> Effect Unit
-  -- ^ Since the handlers of the underlying raw WebSocket are executed in the
-  -- `Effect` monad, this function allows running client monad computations
-  -- within that context.
   , handlers :: HydraNodeApiHandlers m
-  -- ^ Handlers to attach to the established WebSocket connection. 
   , txRetryStrategies ::
       { close :: HydraTxRetryStrategy m
       , contest :: HydraTxRetryStrategy m
       }
-  -- ^ Retry strategies for transactions that may be silently dropped by the
-  -- cardano-node due to limitations of the hydra-node.
   }
 
 -- | Retry strategy to apply when submitting a Hydra transaction.
@@ -79,6 +98,9 @@ data HydraTxRetryStrategy (m :: Type -> Type)
       }
   | DontRetryTx
 
+-- | A default success predicate for the retry strategy for Close transaction.
+-- | Checks whether the Hydra Head has been successfully closed by inspecting
+-- | the current Head status.
 defaultCloseHeadSuccessPredicate
   :: forall (m :: Type -> Type)
    . Functor m
@@ -140,10 +162,16 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
       , fanout: ws.send Fanout
       }
   ws.onConnect do
-    logInfo' $ "Connected to hydra-node WebSocket server (" <> url <> ")."
+    logInfo $ "Connected to hydra-node WebSocket server (" <> url <> ")."
     handlers.connectHandler hydraNodeApiWs
   ws.onError (handlers.errorHandler hydraNodeApiWs)
   ws.onMessage \message -> do
-    logTrace' $ "Received typed message from hydra-node WebSocket: " <> show message
+    logTrace $ "Received typed message from hydra-node WebSocket: " <> show message
+    case handlers.headStatusHandler, nextHeadStatus <$> message of
+      Just statusHandler, Right (Just newStatus) -> do
+        statusHandler newStatus
+        logInfo $ "New Head status: " <> printHeadStatus newStatus
+      _, _ ->
+        pure unit
     handlers.messageHandler hydraNodeApiWs message
   pure hydraNodeApiWs

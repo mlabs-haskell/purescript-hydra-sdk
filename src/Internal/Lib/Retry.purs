@@ -5,7 +5,6 @@ module HydraSdk.Internal.Lib.Retry
 
 import Prelude
 
-import Contract.Log (logWarn')
 import Control.Monad.Logger.Class (class MonadLogger)
 import Control.Monad.Rec.Class (class MonadRec, Step(Loop, Done), tailRecM)
 import Data.Int (toNumber)
@@ -14,6 +13,7 @@ import Data.Tuple (Tuple(Tuple))
 import Data.Tuple.Nested ((/\))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
+import HydraSdk.Internal.Lib.Logger (logWarn)
 
 -- TODO: Consider using https://github.com/Unisay/purescript-aff-retry
 -- in case a more advanced retry mechanism is required.
@@ -42,11 +42,11 @@ retry p = do
       true ->
         pure $ Done res
       false | i <= zero -> do
-        logWarn' $ "maxRetries for action " <> p.actionName <>
+        logWarn $ "maxRetries for action " <> p.actionName <>
           " exceeded, executing failHandler."
         Done <$> p.failHandler res
       false -> do
-        logWarn' $ "successPredicate for action " <> p.actionName
+        logWarn $ "successPredicate for action " <> p.actionName
           <> " returned false, retrying the action in "
           <> show p.delaySec
           <> " seconds."

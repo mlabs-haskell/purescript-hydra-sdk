@@ -1,33 +1,37 @@
 module HydraSdk.Internal.Lib.WebSocket
-  ( module ExportUrl
-  , WebSocket
+  ( WebSocket
   , WebSocketBuilder
+  , WebSocketUrl
   , mkWebSocket
   ) where
 
 import Prelude
 
-import Contract.Log (logError', logTrace')
 import Control.Monad.Logger.Class (class MonadLogger)
-import Ctl.Internal.JsWebSocket
-  ( JsWebSocket
-  , Url
-  , _mkWebSocket
-  , _onWsConnect
-  , _onWsError
-  , _onWsMessage
-  , _wsClose
-  , _wsFinalize
-  , _wsSend
-  )
-import Ctl.Internal.JsWebSocket (Url) as ExportUrl
 import Data.Codec.Argonaut (JsonCodec, printJsonDecodeError) as CA
 import Data.Either (Either(Left, Right))
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import HydraSdk.Internal.Lib.Codec (caDecodeString, caEncodeString)
+import HydraSdk.Internal.Lib.Logger (logError, logTrace)
+
+foreign import data JsWebSocket :: Type
+
+foreign import _initWs :: WebSocketUrl -> Effect JsWebSocket
+
+foreign import _sendWs :: JsWebSocket -> String -> Effect Unit
+
+foreign import _closeWs :: JsWebSocket -> Effect Unit
+
+foreign import _onWsConnect :: JsWebSocket -> (Effect Unit) -> Effect Unit
+
+foreign import _onWsMessage :: JsWebSocket -> (String -> Effect Unit) -> Effect Unit
+
+foreign import _onWsError :: JsWebSocket -> (String -> Effect Unit) -> Effect Unit
 
 foreign import _onWsClose :: JsWebSocket -> (Int -> String -> Effect Unit) -> Effect Unit
+
+type WebSocketUrl = String
 
 type WebSocket (m :: Type -> Type) (in_ :: Type) (out :: Type) =
   { onConnect :: m Unit -> Effect Unit
@@ -39,7 +43,7 @@ type WebSocket (m :: Type -> Type) (in_ :: Type) (out :: Type) =
   }
 
 type WebSocketBuilder (m :: Type -> Type) (in_ :: Type) (out :: Type) =
-  { url :: Url
+  { url :: WebSocketUrl
   , inMsgCodec :: CA.JsonCodec in_
   , outMsgCodec :: CA.JsonCodec out
   , runM :: m Unit -> Effect Unit
@@ -52,23 +56,24 @@ mkWebSocket
   => WebSocketBuilder m in_ out
   -> Effect (WebSocket m in_ out)
 mkWebSocket builder =
-  _mkWebSocket wsLogger builder.url <#> \ws ->
+  _initWs builder.url <#> \ws ->
     { onConnect:
         \callback ->
           _onWsConnect ws (builder.runM callback)
 
     , onMessage:
         \callback ->
-          _onWsMessage ws wsLogger \msgRaw ->
+          _onWsMessage ws \msgRaw ->
             builder.runM do
-              logTrace' $ "mkWebSocket:onMessage: Raw message: " <> msgRaw
+              logTrace $ "mkWebSocket:onMessage: Raw message: " <> msgRaw
               case caDecodeString builder.inMsgCodec msgRaw of
                 Left decodeErr -> do
-                  logError' $ "mkWebSocket:onMessage: Decode error: " <>
+                  logError $ "mkWebSocket:onMessage: Decode error: " <>
                     CA.printJsonDecodeError decodeErr
                   callback $ Left msgRaw
                 Right msg ->
                   callback $ Right msg
+
     , onError:
         \callback ->
           void $ _onWsError ws (builder.runM <<< callback)
@@ -79,11 +84,8 @@ mkWebSocket builder =
 
     , send:
         \msg ->
-          _wsSend ws wsLogger (caEncodeString builder.outMsgCodec msg)
+          _sendWs ws $ caEncodeString builder.outMsgCodec msg
 
     , close:
-        _wsFinalize ws *> _wsClose ws
+        _closeWs ws
     }
-  where
-  wsLogger :: String -> Effect Unit
-  wsLogger _ = pure unit

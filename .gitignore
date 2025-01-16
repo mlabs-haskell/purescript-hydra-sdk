@@ -3,6 +3,7 @@
 /example/minimal/output/
 /example/minimal/.psa-stash
 /example/minimal/.spago/
+/example/minimal/.spago2nix/
 /generated-docs/
 /node_modules
 /output/

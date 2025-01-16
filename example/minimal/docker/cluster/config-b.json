@@ -7,7 +7,7 @@
     "hydraSigningKey": "keys/hydra-b.sk",
     "cardanoSigningKey": "keys/cardano-b.sk",
     "network": {
-      "tag": "testnet",
+      "tag": "Testnet",
       "magic": 1
     },
     "nodeSocket": "node-ipc/node.socket",
@@ -23,7 +23,7 @@
     ]
   },
   "blockfrostApiKey": null,
-  "logLevel": "info",
+  "logLevel": "trace",
   "ctlLogLevel": "warn",
   "commitOutRef": null
 }

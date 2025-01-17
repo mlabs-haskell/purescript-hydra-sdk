@@ -1,3 +1,5 @@
+-- | This module provides an experimental and opinionated interface
+-- | for managing multiple Hydra applications.
 module HydraSdk.Internal.Extra.AppManager
   ( ActiveApp
   , AppManager
@@ -36,27 +38,61 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
 import Effect.Exception (Error)
 
+-- | The index of the slot within the `AppManager` that can be
+-- | reserved / occupied to host a Hydra application with a properly
+-- | configured Hydra Head.
 type AppManagerSlot = Int
+
+-- | A secret used to authenticate application hosting requests
+-- | for a reserved slot.
 type ReservationCode = UUID
 
+-- | Represents an active application within the `AppManager`, i.e.,
+-- | a hosted application with an established Hydra Head.
+-- |
+-- | `state`: The state of the running application. Typically a record
+-- | with mutable, thread-safe variables used to track the current
+-- | Hydra Head status, UTxO snapshot, and other relevant
+-- | information.
+-- |
+-- | `config`: The configuration of the running application.
+-- |
+-- | `occupiedSlot`: The number of the slot this application occupies.
 type ActiveApp appState appConfig =
   { state :: appState
   , config :: appConfig
   , occupiedSlot :: AppManagerSlot
   }
 
+-- | Represents a reserved slot within the `AppManager`.
+-- | 
+-- | `config`: App configuration corresponding to the reserved slot.
+-- | This configuration is used to spin up an application instance
+-- | given the correct reservation code is provided. 
+-- |
+-- | `reservationCode`: A secret used to authenticate hosting requests
+-- | for this reservation.
+-- |
+-- | `reservationMonitor`: Fiber of the assigned reservation monitor,
+-- | which will remove the reservation and free the slot once
+-- | the configured slot reservation period has expired.
 type ReservedSlot appConfig =
   { config :: appConfig
   , reservationCode :: ReservationCode
   , reservationMonitor :: Fiber Unit
   }
 
+-- | Hydra application manager. Tracks active application instances
+-- | and slots for future hosting requests.
 type AppManager appId appState appConfigAvailable appConfigActive =
   { activeApps :: Map appId (ActiveApp appState appConfigActive)
   , reservedSlots :: Map AppManagerSlot (ReservedSlot appConfigAvailable)
   , availableSlots :: Map AppManagerSlot appConfigAvailable
   }
 
+-- | Applies an effectful function to the `AppManager` stored in
+-- | an asynchronous variable (AVar) in a safe manner.
+-- TODO: Consider using `HydraSdk.Internal.Lib.AVar.modify` instead?
 withAppManager
   :: forall m appId appState appConfigAvailable appConfigActive a
    . MonadAff m

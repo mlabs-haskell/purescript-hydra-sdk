@@ -1,3 +1,5 @@
+-- | This module provides an interface for spinning up a hydra-node
+-- | as a Node.js child process.
 module HydraSdk.Internal.Process.HydraNode
   ( HydraHeadPeer
   , HydraNodeHandlers
@@ -12,7 +14,6 @@ import Prelude
 
 import Cardano.AsCbor (encodeCbor)
 import Cardano.Types (TransactionHash)
-import Contract.CborBytes (cborBytesToHex)
 import Control.Error.Util (bool)
 import Data.Array (concat, singleton) as Array
 import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
@@ -27,6 +28,7 @@ import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
 import HydraSdk.Internal.Lib.Codec (txHashCodec)
+import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
   , hostPortCodec
@@ -40,6 +42,7 @@ import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
 import Node.Stream (onDataString)
 
+-- | Parameters to be passed to the hydra-node child process on startup.
 type HydraNodeStartupParams =
   { nodeId :: String
   , hydraNodeAddress :: HostPort
@@ -55,6 +58,7 @@ type HydraNodeStartupParams =
   , peers :: Array HydraHeadPeer
   }
 
+-- | Bidirectional JSON codec for `HydraNodeStartupParams`.
 hydraNodeStartupParamsCodec :: CA.JsonCodec HydraNodeStartupParams
 hydraNodeStartupParamsCodec =
   CA.object "HydraNodeStartupParams" $ CAR.record
@@ -72,12 +76,16 @@ hydraNodeStartupParamsCodec =
     , peers: CA.array hydraHeadPeerCodec
     }
 
+-- | Configuration parameters for a single Hydra Head peer. When setting up a
+-- | Hydra Head, each node must specify the network addresses and public key
+-- | information of its respective peers.
 type HydraHeadPeer =
   { hydraNodeAddress :: HostPort
   , hydraVerificationKey :: FilePath
   , cardanoVerificationKey :: FilePath
   }
 
+-- | Bi-directional JSON codec for `HydraHeadPeer`.
 hydraHeadPeerCodec :: CA.JsonCodec HydraHeadPeer
 hydraHeadPeerCodec =
   CA.object "HydraHeadPeer" $ CAR.record
@@ -86,12 +94,15 @@ hydraHeadPeerCodec =
     , cardanoVerificationKey: CA.string
     }
 
+-- | Optional handlers to attach to the newly spawned hydra-node child process.
 type HydraNodeHandlers =
   { apiServerStartedHandler :: Maybe (Effect Unit)
   , stdoutHandler :: Maybe (String -> Effect Unit)
   , stderrHandler :: Maybe (String -> Effect Unit)
   }
 
+-- | Record with no-op handlers, useful for specifying individual handlers
+-- | with minimal code.
 noopHydraNodeHandlers :: HydraNodeHandlers
 noopHydraNodeHandlers =
   { apiServerStartedHandler: Nothing

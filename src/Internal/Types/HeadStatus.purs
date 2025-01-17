@@ -31,6 +31,8 @@ data HydraHeadStatus
   | HeadStatus_FanoutPossible
   | HeadStatus_Final
 
+-- | Checks if the Hydra Head has been closed by inspecting
+-- | its current status.
 isHeadClosed :: HydraHeadStatus -> Boolean
 isHeadClosed status =
   (status == HeadStatus_Closed)

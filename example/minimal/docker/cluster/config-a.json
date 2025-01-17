@@ -1,0 +1,29 @@
+{
+  "hydraNodeStartupParams": {
+    "nodeId": "1063b00f-0d5b-46b6-9aff-88114a25f688",
+    "hydraNodeAddress": "0.0.0.0:7000",
+    "hydraNodeApiAddress": "127.0.0.1:7001",
+    "persistDir": "hydra-persist",
+    "hydraSigningKey": "keys/hydra-a.sk",
+    "cardanoSigningKey": "keys/cardano-a.sk",
+    "network": {
+      "tag": "Testnet",
+      "magic": 1
+    },
+    "nodeSocket": "node-ipc/node.socket",
+    "pparams": "protocol-parameters.json",
+    "hydraScriptsTxHash": "03f8deb122fbbd98af8eb58ef56feda37728ec957d39586b78198a0cf624412a",
+    "contestPeriodSec": 120,
+    "peers": [
+      {
+        "hydraNodeAddress": "delegate-node-b:7002",
+        "hydraVerificationKey": "keys/hydra-b.vk",
+        "cardanoVerificationKey": "keys/cardano-b.vk"
+      }
+    ]
+  },
+  "blockfrostApiKey": null,
+  "logLevel": "trace",
+  "ctlLogLevel": "warn",
+  "commitOutRef": null
+}

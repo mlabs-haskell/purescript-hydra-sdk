@@ -1,3 +1,5 @@
+-- | This module provides convenience functionality for working with
+-- | asynchronous variables (AVars).
 module HydraSdk.Internal.Lib.AVar
   ( modify
   ) where
@@ -9,6 +11,11 @@ import Effect.AVar (AVar)
 import Effect.Aff.AVar (put, take) as AVar
 import Effect.Aff.Class (class MonadAff, liftAff)
 
+-- | Applies a monadic function to the value stored in an asynchronous
+-- | variable (AVar). If the AVar is empty, it blocks until the
+-- | variable is filled. This function is guaranteed to not leave
+-- | the AVar empty - it either updates the value or throws an error, 
+-- | preserving the current value.
 modify
   :: forall (m :: Type -> Type) (e :: Type) (a :: Type)
    . MonadAff m

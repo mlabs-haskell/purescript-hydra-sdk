@@ -8,9 +8,8 @@ module HydraSdk.Internal.Types.CommitRequest
 
 import Prelude
 
-import Contract.Transaction (Transaction)
-import Contract.Utxos (UtxoMap)
-import Data.Argonaut (class EncodeJson)
+import Aeson (class EncodeAeson)
+import Cardano.Types (Transaction, UtxoMap)
 import Data.Codec.Argonaut (JsonCodec, encode, object) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Generic.Rep (class Generic)
@@ -28,8 +27,8 @@ derive instance Eq HydraCommitRequest
 instance Show HydraCommitRequest where
   show = genericShow
 
-instance EncodeJson HydraCommitRequest where
-  encodeJson =
+instance EncodeAeson HydraCommitRequest where
+  encodeAeson =
     case _ of
       SimpleCommitRequest utxos ->
         CA.encode hydraUtxoMapCodec utxos

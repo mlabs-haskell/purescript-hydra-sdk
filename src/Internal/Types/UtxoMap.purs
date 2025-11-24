@@ -40,6 +40,7 @@ import Cardano.Types
 import Cardano.Types.AssetName (unAssetName)
 import Cardano.Types.DataHash (hashPlutusData)
 import Cardano.Types.OutputDatum (outputDatumDataHash, outputDatumDatum)
+import Cardano.Types.PlutusScript (decodeCbor, encodeCbor) as PlutusScript
 import Control.Alt ((<|>))
 import Control.Safely (foldM)
 import Data.Argonaut (JsonDecodeError(AtKey, TypeMismatch, UnexpectedValue), fromString)
@@ -123,10 +124,16 @@ txOutCodec =
           rec.inlineDatum
     , scriptRef:
         rec.referenceScript >>= \{ script: { cborHex: scriptCbor, "type": scriptLang } } ->
-          case scriptLang of
-            SimpleScript -> NativeScriptRef <$> decodeCbor scriptCbor
-            -- TODO: Plutus version encoded in CBOR?
-            _ -> PlutusScriptRef <$> decodeCbor scriptCbor
+          let
+            decodePlutusScript =
+              map PlutusScriptRef
+                <<< PlutusScript.decodeCbor scriptCbor
+          in
+            case scriptLang of
+              SimpleScript -> NativeScriptRef <$> decodeCbor scriptCbor
+              PlutusScriptV1 -> decodePlutusScript PlutusV1
+              PlutusScriptV2 -> decodePlutusScript PlutusV2
+              PlutusScriptV3 -> decodePlutusScript PlutusV3
     }
 
   toHydraTxOut :: TransactionOutput -> HydraTxOut
@@ -146,7 +153,7 @@ txOutCodec =
                   , "type": SimpleScript
                   }
                 PlutusScriptRef plutusScript@(PlutusScript (_ /\ scriptLang)) ->
-                  { cborHex: encodeCbor plutusScript
+                  { cborHex: PlutusScript.encodeCbor plutusScript
                   , "type":
                       case scriptLang of
                         PlutusV1 -> PlutusScriptV1

@@ -58,21 +58,33 @@
         ];
       };
 
-      hydraFixturesFor = pkgs: pkgs.runCommand "hydra-fixtures" { buildInputs = [ pkgs.jq ]; }
-        ''
-          mkdir $out
-          VALID_ADDR="KjgoiXJS2coTnqpCLHXFtd89Hv9ttjsE6yW4msyLXFNkykUpTsyBs85r2rDDia2uKrhdpGKCJnmFXwvPSWLe75564ixZWdTxRh7TnuaDLnHx"
-          for fixture in ${hydra-fixtures}/hydra-node/golden/ServerOutput/*; do
-            if [ -f "$fixture" ]; then
-              echo "Fixing Hydra fixture: $fixture"
-              jq --arg validAddr "$VALID_ADDR" \
-                'walk(if type == "object" and has("address") and (.address | test("^addr_test1|^addr1") | not)
-                then .address = $validAddr else . end)' \
-                "$fixture" > tmp
-              mv tmp "$out/$(basename "$fixture")"
-            fi
-          done
-        '';
+      hydraFixturesFor = pkgs:
+        let
+          unsupportedPointerAddrs = builtins.toJSON [
+            "addr1g8pv9asp3wgcvu0dg0whf62hcrrvptv3cu7ql20dhzdj3e84ywqa6nxe9ud5l8ta"
+            "addr_test12pnp54qnfly0nwtj4z2ehlut2sldd8gr524w65x4mcq3ytup5f9lv2l9vc0dtgls"
+          ];
+        in 
+        pkgs.runCommand "hydra-fixtures" { buildInputs = [ pkgs.jq ]; }
+          ''
+            mkdir $out
+            VALID_BYRON_ADDR="KjgoiXJS2coTnqpCLHXFtd89Hv9ttjsE6yW4msyLXFNkykUpTsyBs85r2rDDia2uKrhdpGKCJnmFXwvPSWLe75564ixZWdTxRh7TnuaDLnHx"
+            for fixture in ${hydra-fixtures}/hydra-node/golden/ServerOutput/*; do
+              if [ -f "$fixture" ]; then
+                echo "Fixing Hydra fixture: $fixture"
+                jq --arg validAddr "$VALID_BYRON_ADDR" --argjson pointerAddrs '${unsupportedPointerAddrs}' \
+                  'walk(if type == "object"
+                    and has("address")
+                    and (
+                      (.address | test("^addr_test1|^addr1") | not)
+                        or (.address as $a | ($pointerAddrs | index($a)))
+                    )
+                  then .address = $validAddr else . end)' \
+                  "$fixture" > tmp
+                mv tmp "$out/$(basename "$fixture")"
+              fi
+            done
+          '';
 
       minimalExampleFor = system: pkgs:
         pkgs.purescriptProject rec {

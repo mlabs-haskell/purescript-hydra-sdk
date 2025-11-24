@@ -8,22 +8,25 @@
 
   inputs = {
     nixpkgs.follows = "ctl/nixpkgs";
-    hydra.url = "github:input-output-hk/hydra/0.19.0";
-    hydra-fixtures = {
-      url = "github:input-output-hk/hydra/85a210df73e15733c602a8c0c46aab2400d5323d";
-      flake = false;
-    };
-    cardano-node.url = "github:input-output-hk/cardano-node/10.1.3";
     cardano-configurations = {
       url = "github:input-output-hk/cardano-configurations?rev=a913d87246dc2484562a00c86e5f9c74a20e82ce";
       flake = false;
     };
+    cardano-node.url = "github:input-output-hk/cardano-node/10.1.3";
     ctl = {
       url = "github:Plutonomicon/cardano-transaction-lib/4bae6a202f3c77952d6067f94d8ae63cb74f3c0f";
       inputs = {
         cardano-node.follows = "cardano-node";
         cardano-configurations.follows = "cardano-configurations";
+        # overriding ctl's db-sync to prevent mutable locks
+        db-sync.follows = "db-sync";
       };
+    };
+    db-sync.url = "github:input-output-hk/cardano-db-sync/13.1.1.0";
+    hydra.url = "github:input-output-hk/hydra/0.19.0";
+    hydra-fixtures = {
+      url = "github:input-output-hk/hydra/85a210df73e15733c602a8c0c46aab2400d5323d";
+      flake = false;
     };
   };
 

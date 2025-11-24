@@ -19,7 +19,7 @@ import Cardano.Types (TransactionInput, TransactionOutput)
 import Contract.Config
   ( ContractParams
   , PrivatePaymentKeySource(PrivatePaymentKeyFile)
-  , QueryBackendParams
+  , ProviderBackendParams
   , WalletSpec(UseKeys)
   , blockfrostPublicMainnetServerConfig
   , blockfrostPublicPreprodServerConfig
@@ -134,7 +134,7 @@ initApp config@{ hydraNodeStartupParams: { network, cardanoSigningKey }, commitO
           =<< getUtxo oref
       )
 
-  mkBackendParams :: Effect QueryBackendParams
+  mkBackendParams :: Effect ProviderBackendParams
   mkBackendParams = do
     blockfrostConfig <-
       case network of
@@ -153,7 +153,7 @@ initApp config@{ hydraNodeStartupParams: { network, cardanoSigningKey }, commitO
       , confirmTxDelay: defaultConfirmTxDelay
       }
 
-  contractParams :: QueryBackendParams -> ContractParams
+  contractParams :: ProviderBackendParams -> ContractParams
   contractParams backendParams =
     { backendParams
     , networkId: networkToNetworkId network

@@ -14,6 +14,8 @@ RUN npm install purescript@0.15.8
 RUN npm install spago@0.21.0
 
 COPY example/minimal/packages.dhall example/minimal/spago.dhall .
+RUN wget -O package-set.dhall "$(grep -oP 'https://raw[^ ]+' packages.dhall)"
+RUN sed -i 's|https://raw[^ ]*|./package-set.dhall|' packages.dhall
 RUN npx --no-install spago install
 
 COPY example/minimal/src src

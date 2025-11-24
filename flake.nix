@@ -67,7 +67,7 @@
             "addr1g8pv9asp3wgcvu0dg0whf62hcrrvptv3cu7ql20dhzdj3e84ywqa6nxe9ud5l8ta"
             "addr_test12pnp54qnfly0nwtj4z2ehlut2sldd8gr524w65x4mcq3ytup5f9lv2l9vc0dtgls"
           ];
-        in 
+        in
         pkgs.runCommand "hydra-fixtures" { buildInputs = [ pkgs.jq ]; }
           ''
             mkdir $out

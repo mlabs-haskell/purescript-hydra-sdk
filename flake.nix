@@ -11,11 +11,11 @@
     cardano-node.follows = "ctl/cardano-node";
     ctl.url = "github:Plutonomicon/cardano-transaction-lib/8ba78bf6f1fc3016844cdb95ce8dcde3f0f99927";
     hydra = {
-      url = "github:input-output-hk/hydra/1.1.0";
+      url = "github:input-output-hk/hydra/1.2.0";
       inputs.cardano-node.follows = "cardano-node";
     };
     hydra-fixtures = {
-      url = "github:input-output-hk/hydra/1.1.0";
+      url = "github:input-output-hk/hydra/1.2.0";
       flake = false;
     };
   };

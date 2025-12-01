@@ -15,7 +15,7 @@ module HydraSdk.Example.Minimal.App
 
 import Prelude
 
-import Cardano.Types (TransactionInput, TransactionOutput)
+import Cardano.Types (NetworkId(MainnetId, TestnetId), TransactionInput, TransactionOutput)
 import Contract.Config
   ( ContractParams
   , PrivatePaymentKeySource(PrivatePaymentKeyFile)
@@ -39,7 +39,9 @@ import Ctl.Internal.ServerConfig (blockfrostPublicSanchonetServerConfig)
 import Data.Log.Formatter.Pretty (prettyFormatter)
 import Data.Log.Message (Message)
 import Data.Maybe (Maybe(Just, Nothing), maybe)
+import Data.String (take, trim) as String
 import Data.Tuple (Tuple(Tuple))
+import Data.Tuple.Nested (type (/\), (/\))
 import Effect (Effect)
 import Effect.AVar (AVar)
 import Effect.Aff (Aff, launchAff)
@@ -58,6 +60,8 @@ import HydraSdk.Types
   , emptySnapshot
   , networkToNetworkId
   )
+import Node.Encoding (Encoding(UTF8))
+import Node.FS.Sync (readTextFile)
 
 type AppM (a :: Type) = LoggerT (ReaderT AppState Aff) a
 
@@ -109,9 +113,9 @@ setUtxoSnapshot snapshot =
     =<< asks _.utxoSnapshot
 
 initApp :: DelegateServerConfig -> Aff AppState
-initApp config@{ hydraNodeStartupParams: { network, cardanoSigningKey }, commitOutRef } = do
-  backendParams <- liftEffect mkBackendParams
-  contractEnv <- mkContractEnv $ contractParams backendParams
+initApp config@{ hydraNodeStartupParams: { cardanoSigningKey }, commitOutRef } = do
+  networkId /\ backendParams <- liftEffect mkBackendParams
+  contractEnv <- mkContractEnv $ contractParams backendParams networkId
   commitUtxo <- runContractInEnv contractEnv do
     oref <- maybe getCollateral pure commitOutRef
     resolveCommitOutRef oref
@@ -134,29 +138,31 @@ initApp config@{ hydraNodeStartupParams: { network, cardanoSigningKey }, commitO
           =<< getUtxo oref
       )
 
-  mkBackendParams :: Effect ProviderBackendParams
+  mkBackendParams :: Effect (NetworkId /\ ProviderBackendParams)
   mkBackendParams = do
-    blockfrostConfig <-
-      case network of
-        Mainnet -> pure blockfrostPublicMainnetServerConfig
-        Testnet { magic } ->
-          case magic of
-            1 -> pure blockfrostPublicPreprodServerConfig
-            2 -> pure blockfrostPublicPreviewServerConfig
-            4 -> pure blockfrostPublicSanchonetServerConfig
-            _ ->
-              throw $ "mkBackendParams: unsupported testnet network with magic: "
-                <> show magic
-    pure $ mkBlockfrostBackendParams
+    blockfrostApiKey <- String.trim <$> readTextFile UTF8 config.blockfrostApiKeyFile
+    let networkPrefix = String.take 7 blockfrostApiKey
+    networkId /\ blockfrostConfig <-
+      case networkPrefix of
+        "mainnet" ->
+          pure $ MainnetId /\ blockfrostPublicMainnetServerConfig
+        "preprod" ->
+          pure $ TestnetId /\ blockfrostPublicPreprodServerConfig
+        "preview" ->
+          pure $ TestnetId /\ blockfrostPublicPreviewServerConfig
+        _ ->
+          throw $ "mkBackendParams: unsupported network. Blockfrost API key prefix: "
+            <> networkPrefix
+    pure $ networkId /\ mkBlockfrostBackendParams
       { blockfrostConfig
-      , blockfrostApiKey: config.blockfrostApiKey
+      , blockfrostApiKey: Just blockfrostApiKey
       , confirmTxDelay: defaultConfirmTxDelay
       }
 
-  contractParams :: ProviderBackendParams -> ContractParams
-  contractParams backendParams =
+  contractParams :: ProviderBackendParams -> NetworkId -> ContractParams
+  contractParams backendParams networkId =
     { backendParams
-    , networkId: networkToNetworkId network
+    , networkId
     , logLevel: config.ctlLogLevel
     , walletSpec: Just $ UseKeys (PrivatePaymentKeyFile cardanoSigningKey) Nothing Nothing
     , customLogger: Nothing

@@ -872,4 +872,3 @@ newTxMessageCodec =
     { transaction: hydraTxCodec
     }
 
-

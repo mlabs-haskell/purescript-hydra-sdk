@@ -21,10 +21,12 @@ RUN npx --no-install spago install
 COPY example/minimal/src src
 COPY example/minimal/app app
 COPY example/minimal/protocol-parameters.json .
+COPY example/minimal/blockfrost.txt .
 RUN npx --no-install spago build
 
-RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/1.1.0/hydra-x86_64-linux-1.1.0.zip
-RUN unzip -d /usr/local/bin/ hydra-x86_64-linux-1.1.0.zip
+ARG HYDRA_VERSION=1.2.0
+RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/${HYDRA_VERSION}/hydra-x86_linux-${HYDRA_VERSION}.zip
+RUN unzip -d /usr/local/bin/ hydra-x86_linux-${HYDRA_VERSION}.zip
 RUN chmod +x /usr/local/bin/hydra-node
 
 ENTRYPOINT ["npx", "--no-install", "spago", "-q", "run", "--main", "HydraSdk.Example.Minimal.Main", "--exec-args"]

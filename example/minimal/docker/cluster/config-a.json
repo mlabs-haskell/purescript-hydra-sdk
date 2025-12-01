@@ -7,16 +7,19 @@
     "persistDir": "hydra-persist",
     "hydraSigningKey": "keys/hydra-a.sk",
     "cardanoSigningKey": "keys/cardano-a.sk",
-    "network": {
-      "tag": "Testnet",
-      "magic": 1
+    "queryLayer": {
+      "tag": "CardanoNode",
+      "nodeSocket": "node-ipc/node.socket",
+      "network": {
+        "tag": "Testnet",
+        "magic": 1
+      }
     },
-    "nodeSocket": "node-ipc/node.socket",
     "pparams": "protocol-parameters.json",
     "hydraScripts": [
-      "152cfeb309be439f3e8a8940bd9e46ba634e469702370789b03bb53219fa42f9",
-      "d69468c6ea65aee0b1595d25fb8d16b5d32feb20749936a8fd82b112032f4d5f",
-      "828ff89d3f65ddb600ab8091a4ee27661277029ae5ec0c39457b271db9766c6f"
+      "ba97aaa648271c75604e66e3a4e00da49bdcaca9ba74d9031ab4c08f736e1c12",
+      "ff046eba10b9b0f90683bf5becbd6afa496059fc1cf610e798cfe778d85b70ba",
+      "4bb8c01290599cc9de195b586ee1eb73422b00198126f51f52b00a8e35da9ce3"
     ],
     "contestPeriodSec": 60,
     "peers": [
@@ -27,7 +30,7 @@
       }
     ]
   },
-  "blockfrostApiKey": "preprodq4qb2xZcZk6LUFk36DmEcxIFRM8DRwkV",
+  "blockfrostApiKeyFile": "blockfrost.txt",
   "logLevel": "trace",
   "ctlLogLevel": "warn",
   "commitOutRef": null

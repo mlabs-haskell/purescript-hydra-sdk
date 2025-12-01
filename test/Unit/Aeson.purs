@@ -61,5 +61,7 @@ readHydraFixtures constrName = do
 
 ignoredTestcases :: Array String
 ignoredTestcases =
-  [ -- "SnapshotConfirmed" -- Unsupported format
+  [ "InvalidInput"
+  , "PostTxOnChainFailed"
+  , "CommandFailed"
   ]

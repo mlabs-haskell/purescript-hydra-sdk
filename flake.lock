@@ -2803,16 +2803,16 @@
     "hydra-fixtures": {
       "flake": false,
       "locked": {
-        "lastModified": 1761652330,
-        "narHash": "sha256-urPbqvtneN79ckECIl6GdkJULOt2xY/11f0pKhg0qLw=",
+        "lastModified": 1764349069,
+        "narHash": "sha256-jUeUL3uHIrQbsPMwuz9KzGMhMbMxWEgoYKOQfb8D0P8=",
         "owner": "input-output-hk",
         "repo": "hydra",
-        "rev": "e4d50a934da7a2620b545980c3db32b9f83c8d20",
+        "rev": "d967d641c0ccad884aff6187b4d1d6c8d92380dc",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "1.1.0",
+        "ref": "1.2.0",
         "repo": "hydra",
         "type": "github"
       }
@@ -2915,16 +2915,16 @@
         "rust-accumulator": "rust-accumulator"
       },
       "locked": {
-        "lastModified": 1761652330,
-        "narHash": "sha256-urPbqvtneN79ckECIl6GdkJULOt2xY/11f0pKhg0qLw=",
+        "lastModified": 1764349069,
+        "narHash": "sha256-jUeUL3uHIrQbsPMwuz9KzGMhMbMxWEgoYKOQfb8D0P8=",
         "owner": "input-output-hk",
         "repo": "hydra",
-        "rev": "e4d50a934da7a2620b545980c3db32b9f83c8d20",
+        "rev": "d967d641c0ccad884aff6187b4d1d6c8d92380dc",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "1.1.0",
+        "ref": "1.2.0",
         "repo": "hydra",
         "type": "github"
       }

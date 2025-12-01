@@ -30,8 +30,18 @@ import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
 import HydraSdk.Internal.Lib.Codec (txHashCodec)
 import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
-import HydraSdk.Internal.Types.HostPort (HostPort, hostPortStringCodec, printHost, printHostPort, printPort)
-import HydraSdk.Internal.Types.Network (Network(Testnet, Mainnet), networkCodec)
+import HydraSdk.Internal.Types.HostPort
+  ( HostPort
+  , hostPortStringCodec
+  , printHost
+  , printHostPort
+  , printPort
+  )
+import HydraSdk.Internal.Types.Network (Network(Testnet, Mainnet))
+import HydraSdk.Internal.Types.QueryLayer
+  ( QueryLayer(CardanoNode, Blockfrost)
+  , queryLayerCodec
+  )
 import Node.ChildProcess (ChildProcess, defaultSpawnOptions, spawn, stderr, stdout)
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
@@ -46,8 +56,7 @@ type HydraNodeStartupParams =
   , persistDir :: FilePath
   , hydraSigningKey :: FilePath
   , cardanoSigningKey :: FilePath
-  , network :: Network
-  , nodeSocket :: FilePath
+  , queryLayer :: QueryLayer
   , pparams :: FilePath
   , hydraScripts :: Array TransactionHash
   , contestPeriodSec :: Int
@@ -65,8 +74,7 @@ hydraNodeStartupParamsCodec =
     , persistDir: CA.string
     , hydraSigningKey: CA.string
     , cardanoSigningKey: CA.string
-    , network: networkCodec
-    , nodeSocket: CA.string
+    , queryLayer: queryLayerCodec
     , pparams: CA.string
     , hydraScripts: CA.array txHashCodec
     , contestPeriodSec: CA.int
@@ -147,13 +155,29 @@ spawnHydraNode params handlers = liftEffect do
   option :: String -> String -> Array String
   option name val = [ "--" <> name, val ]
 
-  networkArgs :: Array String
+  optionMaybe :: forall (a :: Type). String -> (a -> String) -> Maybe a -> Array String
+  optionMaybe name f val = maybe mempty (option name <<< f) val
+
+  networkArgs :: Network -> Array String
   networkArgs =
-    case params.network of
+    case _ of
       Testnet { magic } ->
         option "testnet-magic" $ Int.toStringAs Int.decimal magic
       Mainnet ->
         Array.singleton "--mainnet"
+
+  queryLayerArgs :: Array String
+  queryLayerArgs =
+    case params.queryLayer of
+      CardanoNode { nodeSocket, network } ->
+        networkArgs network
+          <> option "node-socket" nodeSocket
+      Blockfrost { apiKeyFile, queryTimeoutSec, retryTimeoutSec } ->
+        Array.concat
+          [ option "blockfrost" apiKeyFile
+          , optionMaybe "blockfrost-query-timeout" show queryTimeoutSec
+          , optionMaybe "blockfrost-retry-timeout" show retryTimeoutSec
+          ]
 
   peerArgs :: Array String
   peerArgs =
@@ -168,16 +192,15 @@ spawnHydraNode params handlers = liftEffect do
 
   hydraNodeArgs :: Array String
   hydraNodeArgs =
-    networkArgs <> peerArgs <> Array.concat
+    queryLayerArgs <> peerArgs <> Array.concat
       [ option "node-id" params.nodeId
       , option "listen" $ printHostPort params.hydraNodeAddress
-      , maybe mempty (option "advertise" <<< printHostPort) params.hydraNodeAdvertisedAddress
+      , optionMaybe "advertise" printHostPort params.hydraNodeAdvertisedAddress
       , option "api-host" $ printHost params.hydraNodeApiAddress
       , option "api-port" $ printPort params.hydraNodeApiAddress
       , option "persistence-dir" params.persistDir
       , option "hydra-signing-key" params.hydraSigningKey
       , option "cardano-signing-key" params.cardanoSigningKey
-      , option "node-socket" params.nodeSocket
       , option "ledger-protocol-parameters" params.pparams
       , option "hydra-scripts-tx-id" $
           String.joinWith "," (cborBytesToHex <<< encodeCbor <$> params.hydraScripts)

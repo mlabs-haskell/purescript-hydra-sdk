@@ -8,6 +8,7 @@ module HydraSdk.Types
   , module ExportHttpError
   , module ExportNetwork
   , module ExportNodeApiMessage
+  , module ExportQueryLayer
   , module ExportSnapshot
   , module ExportTx
   , module ExportUtxoMap
@@ -150,6 +151,11 @@ import HydraSdk.Internal.Types.NodeApiMessage
   , hydraNodeApiOutMessageCodec
   , nextHeadStatus
   ) as ExportNodeApiMessage
+
+import HydraSdk.Internal.Types.QueryLayer
+  ( QueryLayer(CardanoNode, Blockfrost)
+  , queryLayerCodec
+  ) as ExportQueryLayer
 
 import HydraSdk.Internal.Types.Snapshot
   ( ConfirmedSnapshot(InitialSnapshot, ConfirmedSnapshot)

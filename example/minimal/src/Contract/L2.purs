@@ -66,9 +66,9 @@ placeArbitraryDatumL2 snapshotUtxos = withPatchedGetUtxoByOrefQuery snapshotUtxo
 withPatchedGetUtxoByOrefQuery :: forall (a :: Type). UtxoMap -> Contract a -> Contract a
 withPatchedGetUtxoByOrefQuery snapshotUtxos =
   local \env -> env
-    { provider = env.provider 
+    { provider = env.provider
         { getUtxoByOref = \oref ->
             maybe (env.provider.getUtxoByOref oref) (pure <<< Right <<< Just) $
-              Map.lookup oref snapshotUtxos 
+              Map.lookup oref snapshotUtxos
         }
     }

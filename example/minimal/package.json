@@ -1,6 +1,6 @@
 {
   "name": "purescript-hydra-sdk-example-minimal",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "type": "module",
   "dependencies": {
     "@errfrom/cardano-data-lite": "1.0.1",

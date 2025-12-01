@@ -35,7 +35,6 @@ import Contract.Utxos (getUtxo)
 import Control.Monad.Error.Class (liftMaybe)
 import Control.Monad.Logger.Trans (LoggerT, runLoggerT)
 import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
-import Ctl.Internal.ServerConfig (blockfrostPublicSanchonetServerConfig)
 import Data.Log.Formatter.Pretty (prettyFormatter)
 import Data.Log.Message (Message)
 import Data.Maybe (Maybe(Just, Nothing), maybe)
@@ -53,13 +52,7 @@ import Effect.Exception (error, throw)
 import HydraSdk.Example.Minimal.Config (DelegateServerConfig)
 import HydraSdk.Example.Minimal.Contract.Collateral (getCollateral)
 import HydraSdk.Lib (modify) as AVar
-import HydraSdk.Types
-  ( HydraHeadStatus(HeadStatus_Unknown)
-  , HydraSnapshot
-  , Network(Mainnet, Testnet)
-  , emptySnapshot
-  , networkToNetworkId
-  )
+import HydraSdk.Types (HydraHeadStatus(HeadStatus_Unknown), HydraSnapshot, emptySnapshot)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS.Sync (readTextFile)
 

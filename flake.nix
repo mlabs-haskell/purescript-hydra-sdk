@@ -45,9 +45,6 @@
           ctl.overlays.purescript
           ctl.overlays.runtime
           ctl.overlays.spago
-          (_: _: {
-            arion = (import ctl.inputs.nixpkgs-arion { inherit system; }).arion;
-          })
         ];
       };
 

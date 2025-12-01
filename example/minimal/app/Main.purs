@@ -185,7 +185,7 @@ messageHandler ws =
           setUtxoSnapshot $ HydraSnapshot
             { snapshotNumber: zero
             , utxo
-            -- , confirmedTransactions: mempty
+            , confirmed: mempty
             }
           tx <- runContractInApp $ placeArbitraryDatumL2 $ toUtxoMap utxo
           liftEffect $ ws.submitTxL2 tx

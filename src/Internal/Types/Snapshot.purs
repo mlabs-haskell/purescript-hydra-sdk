@@ -9,7 +9,6 @@ module HydraSdk.Internal.Types.Snapshot
 import Prelude
 
 import Aeson (class DecodeAeson, class EncodeAeson, decodeAeson, encodeAeson, getField)
-import Cardano.Types (TransactionHash)
 import Control.Alt ((<|>))
 import Data.Bifunctor (lmap)
 import Data.Codec.Argonaut (JsonCodec, array, decode, encode, object, string) as CA
@@ -19,6 +18,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype, wrap)
 import Data.Show.Generic (genericShow)
 import HydraSdk.Internal.Lib.Codec (aesonCodec, fromCaJsonDecodeError)
+import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
 import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
 
 data ConfirmedSnapshot
@@ -58,8 +58,7 @@ confirmedSnapshotCodec =
 newtype HydraSnapshot = HydraSnapshot
   { snapshotNumber :: Int
   , utxo :: HydraUtxoMap
-  -- FIXME: support full transactions
-  -- , confirmedTransactions :: Array TransactionHash
+  , confirmed :: Array HydraTx
   }
 
 derive instance Generic HydraSnapshot _
@@ -75,11 +74,13 @@ instance DecodeAeson HydraSnapshot where
     snapshotNumber <- getField obj "snapshotNumber" <|> getField obj "number"
     utxo <- (lmap fromCaJsonDecodeError <<< CA.decode hydraUtxoMapCodec) =<< getField obj
       "utxo"
-    -- confirmedTransactions <- getField obj "confirmedTransactions" <|> getField obj "confirmed"
+    confirmed <-
+      (lmap fromCaJsonDecodeError <<< CA.decode (CA.array hydraTxCodec))
+        =<< getField obj "confirmed"
     pure $ wrap
       { snapshotNumber
       , utxo
-      -- , confirmedTransactions
+      , confirmed
       }
 
 instance EncodeAeson HydraSnapshot where
@@ -87,7 +88,7 @@ instance EncodeAeson HydraSnapshot where
     encodeAeson
       { snapshotNumber: encodeAeson snapshot.snapshotNumber
       , utxo: CA.encode hydraUtxoMapCodec snapshot.utxo
-      -- , confirmedTransactions: encodeAeson snapshot.confirmedTransactions
+      , confirmed: CA.encode (CA.array hydraTxCodec) snapshot.confirmed
       }
 
 hydraSnapshotCodec :: CA.JsonCodec HydraSnapshot
@@ -97,6 +98,6 @@ emptySnapshot :: HydraSnapshot
 emptySnapshot = wrap
   { snapshotNumber: zero
   , utxo: mempty
-  -- , confirmedTransactions: mempty
+  , confirmed: mempty
   }
 

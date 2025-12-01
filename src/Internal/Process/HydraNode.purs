@@ -17,25 +17,20 @@ import Cardano.Types (TransactionHash)
 import Control.Error.Util (bool)
 import Data.Array (concat, singleton) as Array
 import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
+import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Foldable (foldMap)
 import Data.Int (decimal, toStringAs) as Int
-import Data.Maybe (Maybe(Nothing), isNothing)
+import Data.Maybe (Maybe(Nothing), isNothing, maybe)
 import Data.String (Pattern(Pattern))
-import Data.String (contains) as String
+import Data.String (contains, joinWith) as String
 import Data.Traversable (for_, traverse_)
 import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
 import HydraSdk.Internal.Lib.Codec (txHashCodec)
 import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
-import HydraSdk.Internal.Types.HostPort
-  ( HostPort
-  , hostPortCodec
-  , printHost
-  , printHostPort
-  , printPort
-  )
+import HydraSdk.Internal.Types.HostPort (HostPort, hostPortStringCodec, printHost, printHostPort, printPort)
 import HydraSdk.Internal.Types.Network (Network(Testnet, Mainnet), networkCodec)
 import Node.ChildProcess (ChildProcess, defaultSpawnOptions, spawn, stderr, stdout)
 import Node.Encoding (Encoding(UTF8)) as Encoding
@@ -46,6 +41,7 @@ import Node.Stream (onDataString)
 type HydraNodeStartupParams =
   { nodeId :: String
   , hydraNodeAddress :: HostPort
+  , hydraNodeAdvertisedAddress :: Maybe HostPort
   , hydraNodeApiAddress :: HostPort
   , persistDir :: FilePath
   , hydraSigningKey :: FilePath
@@ -53,7 +49,7 @@ type HydraNodeStartupParams =
   , network :: Network
   , nodeSocket :: FilePath
   , pparams :: FilePath
-  , hydraScriptsTxHash :: TransactionHash
+  , hydraScripts :: Array TransactionHash
   , contestPeriodSec :: Int
   , peers :: Array HydraHeadPeer
   }
@@ -63,15 +59,16 @@ hydraNodeStartupParamsCodec :: CA.JsonCodec HydraNodeStartupParams
 hydraNodeStartupParamsCodec =
   CA.object "HydraNodeStartupParams" $ CAR.record
     { nodeId: CA.string
-    , hydraNodeAddress: hostPortCodec
-    , hydraNodeApiAddress: hostPortCodec
+    , hydraNodeAddress: hostPortStringCodec
+    , hydraNodeAdvertisedAddress: CA.maybe hostPortStringCodec
+    , hydraNodeApiAddress: hostPortStringCodec
     , persistDir: CA.string
     , hydraSigningKey: CA.string
     , cardanoSigningKey: CA.string
     , network: networkCodec
     , nodeSocket: CA.string
     , pparams: CA.string
-    , hydraScriptsTxHash: txHashCodec
+    , hydraScripts: CA.array txHashCodec
     , contestPeriodSec: CA.int
     , peers: CA.array hydraHeadPeerCodec
     }
@@ -89,7 +86,7 @@ type HydraHeadPeer =
 hydraHeadPeerCodec :: CA.JsonCodec HydraHeadPeer
 hydraHeadPeerCodec =
   CA.object "HydraHeadPeer" $ CAR.record
-    { hydraNodeAddress: hostPortCodec
+    { hydraNodeAddress: hostPortStringCodec
     , hydraVerificationKey: CA.string
     , cardanoVerificationKey: CA.string
     }
@@ -173,8 +170,8 @@ spawnHydraNode params handlers = liftEffect do
   hydraNodeArgs =
     networkArgs <> peerArgs <> Array.concat
       [ option "node-id" params.nodeId
-      , option "host" $ printHost params.hydraNodeAddress
-      , option "port" $ printPort params.hydraNodeAddress
+      , option "listen" $ printHostPort params.hydraNodeAddress
+      , maybe mempty (option "advertise" <<< printHostPort) params.hydraNodeAdvertisedAddress
       , option "api-host" $ printHost params.hydraNodeApiAddress
       , option "api-port" $ printPort params.hydraNodeApiAddress
       , option "persistence-dir" params.persistDir
@@ -182,6 +179,8 @@ spawnHydraNode params handlers = liftEffect do
       , option "cardano-signing-key" params.cardanoSigningKey
       , option "node-socket" params.nodeSocket
       , option "ledger-protocol-parameters" params.pparams
-      , option "hydra-scripts-tx-id" $ cborBytesToHex $ encodeCbor params.hydraScriptsTxHash
-      , option "contestation-period" $ Int.toStringAs Int.decimal params.contestPeriodSec
+      , option "hydra-scripts-tx-id" $
+          String.joinWith "," (cborBytesToHex <<< encodeCbor <$> params.hydraScripts)
+      , option "contestation-period" $
+          Int.toStringAs Int.decimal params.contestPeriodSec <> "s"
       ]

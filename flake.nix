@@ -8,24 +8,14 @@
 
   inputs = {
     nixpkgs.follows = "ctl/nixpkgs";
-    cardano-configurations = {
-      url = "github:input-output-hk/cardano-configurations?rev=a913d87246dc2484562a00c86e5f9c74a20e82ce";
-      flake = false;
+    cardano-node.follows = "ctl/cardano-node";
+    ctl.url = "github:Plutonomicon/cardano-transaction-lib/8ba78bf6f1fc3016844cdb95ce8dcde3f0f99927";
+    hydra = {
+      url = "github:input-output-hk/hydra/1.1.0";
+      inputs.cardano-node.follows = "cardano-node";
     };
-    cardano-node.url = "github:input-output-hk/cardano-node/10.1.3";
-    ctl = {
-      url = "github:Plutonomicon/cardano-transaction-lib/4bae6a202f3c77952d6067f94d8ae63cb74f3c0f";
-      inputs = {
-        cardano-node.follows = "cardano-node";
-        cardano-configurations.follows = "cardano-configurations";
-        # overriding ctl's db-sync to prevent mutable locks
-        db-sync.follows = "db-sync";
-      };
-    };
-    db-sync.url = "github:input-output-hk/cardano-db-sync/13.1.1.0";
-    hydra.url = "github:input-output-hk/hydra/0.19.0";
     hydra-fixtures = {
-      url = "github:input-output-hk/hydra/85a210df73e15733c602a8c0c46aab2400d5323d";
+      url = "github:input-output-hk/hydra/1.1.0";
       flake = false;
     };
   };
@@ -64,7 +54,8 @@
       hydraFixturesFor = pkgs:
         let
           unsupportedPointerAddrs = builtins.toJSON [
-            "addr1g8pv9asp3wgcvu0dg0whf62hcrrvptv3cu7ql20dhzdj3e84ywqa6nxe9ud5l8ta"
+            "addr1gxnp8a5j9xw0v4c30kd8f2u6mwu846e9nuyljcfgp7m37ggpqqqs3xh88l"
+            "addr_test12plg5jgheuv50nanwkx82u3an4jf9se8pqpax4y8wtm6q3cqqyqqsu8naf"
             "addr_test12pnp54qnfly0nwtj4z2ehlut2sldd8gr524w65x4mcq3ytup5f9lv2l9vc0dtgls"
           ];
         in
@@ -72,7 +63,7 @@
           ''
             mkdir $out
             VALID_BYRON_ADDR="KjgoiXJS2coTnqpCLHXFtd89Hv9ttjsE6yW4msyLXFNkykUpTsyBs85r2rDDia2uKrhdpGKCJnmFXwvPSWLe75564ixZWdTxRh7TnuaDLnHx"
-            for fixture in ${hydra-fixtures}/hydra-node/golden/ServerOutput/*; do
+            for fixture in ${hydra-fixtures}/hydra-node/golden/ServerOutput/* ${hydra-fixtures}/hydra-node/golden/Greetings/Greetings.json; do
               if [ -f "$fixture" ]; then
                 echo "Fixing Hydra fixture: $fixture"
                 jq --arg validAddr "$VALID_BYRON_ADDR" --argjson pointerAddrs '${unsupportedPointerAddrs}' \

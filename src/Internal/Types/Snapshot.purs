@@ -58,7 +58,8 @@ confirmedSnapshotCodec =
 newtype HydraSnapshot = HydraSnapshot
   { snapshotNumber :: Int
   , utxo :: HydraUtxoMap
-  , confirmedTransactions :: Array TransactionHash
+  -- FIXME: support full transactions
+  -- , confirmedTransactions :: Array TransactionHash
   }
 
 derive instance Generic HydraSnapshot _
@@ -74,11 +75,11 @@ instance DecodeAeson HydraSnapshot where
     snapshotNumber <- getField obj "snapshotNumber" <|> getField obj "number"
     utxo <- (lmap fromCaJsonDecodeError <<< CA.decode hydraUtxoMapCodec) =<< getField obj
       "utxo"
-    confirmedTransactions <- getField obj "confirmedTransactions" <|> getField obj "confirmed"
+    -- confirmedTransactions <- getField obj "confirmedTransactions" <|> getField obj "confirmed"
     pure $ wrap
       { snapshotNumber
       , utxo
-      , confirmedTransactions
+      -- , confirmedTransactions
       }
 
 instance EncodeAeson HydraSnapshot where
@@ -86,7 +87,7 @@ instance EncodeAeson HydraSnapshot where
     encodeAeson
       { snapshotNumber: encodeAeson snapshot.snapshotNumber
       , utxo: CA.encode hydraUtxoMapCodec snapshot.utxo
-      , confirmedTransactions: encodeAeson snapshot.confirmedTransactions
+      -- , confirmedTransactions: encodeAeson snapshot.confirmedTransactions
       }
 
 hydraSnapshotCodec :: CA.JsonCodec HydraSnapshot
@@ -96,6 +97,6 @@ emptySnapshot :: HydraSnapshot
 emptySnapshot = wrap
   { snapshotNumber: zero
   , utxo: mempty
-  , confirmedTransactions: mempty
+  -- , confirmedTransactions: mempty
   }
 

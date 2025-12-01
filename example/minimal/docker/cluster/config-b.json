@@ -2,6 +2,7 @@
   "hydraNodeStartupParams": {
     "nodeId": "91fd9af9-1eb8-42e7-8cb3-20bca7a4f13b",
     "hydraNodeAddress": "0.0.0.0:7002",
+    "hydraNodeAdvertisedAddress": "delegate-node-b:7002",
     "hydraNodeApiAddress": "127.0.0.1:7003",
     "persistDir": "hydra-persist",
     "hydraSigningKey": "keys/hydra-b.sk",
@@ -12,8 +13,12 @@
     },
     "nodeSocket": "node-ipc/node.socket",
     "pparams": "protocol-parameters.json",
-    "hydraScriptsTxHash": "03f8deb122fbbd98af8eb58ef56feda37728ec957d39586b78198a0cf624412a",
-    "contestPeriodSec": 120,
+    "hydraScripts": [
+      "152cfeb309be439f3e8a8940bd9e46ba634e469702370789b03bb53219fa42f9",
+      "d69468c6ea65aee0b1595d25fb8d16b5d32feb20749936a8fd82b112032f4d5f",
+      "828ff89d3f65ddb600ab8091a4ee27661277029ae5ec0c39457b271db9766c6f"
+    ],
+    "contestPeriodSec": 60,
     "peers": [
       {
         "hydraNodeAddress": "delegate-node-a:7000",
@@ -22,7 +27,7 @@
       }
     ]
   },
-  "blockfrostApiKey": null,
+  "blockfrostApiKey": "preprodq4qb2xZcZk6LUFk36DmEcxIFRM8DRwkV",
   "logLevel": "trace",
   "ctlLogLevel": "warn",
   "commitOutRef": null

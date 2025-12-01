@@ -43,9 +43,12 @@ import HydraSdk.Internal.Types.HeadStatus
 
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
-  , hostPortCodec
+  , hostCodec
+  , hostPortObjectCodec
   , hostPortOption
   , hostPortParser
+  , hostPortStringCodec
+  , portCodec
   , printHost
   , printHostPort
   , printPort
@@ -72,7 +75,9 @@ import HydraSdk.Internal.Types.NodeApiMessage
       ( Greetings
       , PeerConnected
       , PeerDisconnected
-      , PeerHandshakeFailure
+      , NetworkConnected
+      , NetworkDisconnected
+      , NetworkVersionMismatch
       , HeadIsInitializing
       , Committed
       , HeadIsOpen
@@ -99,6 +104,8 @@ import HydraSdk.Internal.Types.NodeApiMessage
       )
   , IgnoredHeadInitMessage
   , InvalidInputMessage
+  , NetworkConnMessage
+  , NetworkVersionMismatchMessage
   , NewTxMessage
   , PeerConnMessage
   , PostChainTx
@@ -134,7 +141,6 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , FailedToConstructFanoutTx
       )
   , PostTxOnchainFailedMessage
-  , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
   , SeqTimestamp
   , SnapshotConfirmedMessage

@@ -23,8 +23,8 @@ COPY example/minimal/app app
 COPY example/minimal/protocol-parameters.json .
 RUN npx --no-install spago build
 
-RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/0.19.0/hydra-x86_64-linux-0.19.0.zip
-RUN unzip -d /usr/local/bin/ hydra-x86_64-linux-0.19.0.zip
+RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/1.1.0/hydra-x86_64-linux-1.1.0.zip
+RUN unzip -d /usr/local/bin/ hydra-x86_64-linux-1.1.0.zip
 RUN chmod +x /usr/local/bin/hydra-node
 
 ENTRYPOINT ["npx", "--no-install", "spago", "-q", "run", "--main", "HydraSdk.Example.Minimal.Main", "--exec-args"]

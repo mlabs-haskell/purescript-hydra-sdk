@@ -175,7 +175,7 @@ let additions =
           , "web-storage"
           ]
         , repo = "https://github.com/Plutonomicon/cardano-transaction-lib.git"
-        , version = "539385f4e4572dabbccff992802d1490f3106bf8"
+        , version = "8ba78bf6f1fc3016844cdb95ce8dcde3f0f99927"
         }
       , codec-aeson =
         { dependencies =

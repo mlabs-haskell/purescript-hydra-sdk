@@ -6,7 +6,7 @@ import Prelude
 
 import Aeson (stringifyAeson)
 import Cardano.AsCbor (decodeCbor, encodeCbor)
-import Cardano.Types (Language(PlutusV2), Transaction)
+import Cardano.Types (Language(PlutusV3), Transaction)
 import Cardano.Types.AuxiliaryData (hashAuxiliaryData)
 import Cardano.Types.Transaction (_body, _witnessSet)
 import Cardano.Types.TransactionBody (_auxiliaryDataHash)
@@ -185,7 +185,7 @@ messageHandler ws =
           setUtxoSnapshot $ HydraSnapshot
             { snapshotNumber: zero
             , utxo
-            , confirmedTransactions: mempty
+            -- , confirmedTransactions: mempty
             }
           tx <- runContractInApp $ placeArbitraryDatumL2 $ toUtxoMap utxo
           liftEffect $ ws.submitTxL2 tx
@@ -224,7 +224,7 @@ fixCommitTx = reSignTransaction <=< fixScriptIntegrityHash <<< setAuxDataHash
   fixScriptIntegrityHash tx = do
     pparams <- unwrap <$> getProtocolParameters
     let
-      costModels = Map.filterKeys (eq PlutusV2) pparams.costModels
+      costModels = Map.filterKeys (eq PlutusV3) pparams.costModels
       ws = unwrap (unwrap tx).witnessSet
     liftEffect $ setScriptDataHash costModels ws.redeemers ws.plutusData tx
 

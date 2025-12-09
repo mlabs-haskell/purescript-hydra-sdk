@@ -155,8 +155,8 @@ spawnHydraNode params handlers = liftEffect do
   option :: String -> String -> Array String
   option name val = [ "--" <> name, val ]
 
-  optionMaybe :: forall (a :: Type). String -> (a -> String) -> Maybe a -> Array String
-  optionMaybe name f val = maybe mempty (option name <<< f) val
+  optionMaybe :: String -> Maybe String -> Array String
+  optionMaybe name = maybe mempty (option name)
 
   networkArgs :: Network -> Array String
   networkArgs =
@@ -175,8 +175,8 @@ spawnHydraNode params handlers = liftEffect do
       Blockfrost { apiKeyFile, queryTimeoutSec, retryTimeoutSec } ->
         Array.concat
           [ option "blockfrost" apiKeyFile
-          , optionMaybe "blockfrost-query-timeout" show queryTimeoutSec
-          , optionMaybe "blockfrost-retry-timeout" show retryTimeoutSec
+          , optionMaybe "blockfrost-query-timeout" $ show <$> queryTimeoutSec
+          , optionMaybe "blockfrost-retry-timeout" $ show <$> retryTimeoutSec
           ]
 
   peerArgs :: Array String
@@ -195,7 +195,7 @@ spawnHydraNode params handlers = liftEffect do
     queryLayerArgs <> peerArgs <> Array.concat
       [ option "node-id" params.nodeId
       , option "listen" $ printHostPort params.hydraNodeAddress
-      , optionMaybe "advertise" printHostPort params.hydraNodeAdvertisedAddress
+      , optionMaybe "advertise" $ printHostPort <$> params.hydraNodeAdvertisedAddress
       , option "api-host" $ printHost params.hydraNodeApiAddress
       , option "api-port" $ printPort params.hydraNodeApiAddress
       , option "persistence-dir" params.persistDir

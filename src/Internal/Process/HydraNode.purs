@@ -16,7 +16,7 @@ import Cardano.AsCbor (encodeCbor)
 import Cardano.Types (TransactionHash)
 import Control.Error.Util (bool)
 import Data.Array (concat, singleton) as Array
-import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
+import Data.Codec.Argonaut (JsonCodec, JPropCodec, array, int, object, string) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Foldable (foldMap)
@@ -28,7 +28,7 @@ import Data.Traversable (for_, traverse_)
 import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
-import HydraSdk.Internal.Lib.Codec (txHashCodec)
+import HydraSdk.Internal.Lib.Codec (txHashCodec, unionRecordCodecs)
 import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
@@ -46,9 +46,13 @@ import Node.ChildProcess (ChildProcess, defaultSpawnOptions, spawn, stderr, stdo
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
 import Node.Stream (onDataString)
+import Prim.Row (class Union) as Row
+import Prim.RowList (RowList)
+import Prim.RowList (class RowToList) as RowList
+import Record.Extra (class Keys) as Record.Extra
 
 -- | Parameters to be passed to the hydra-node child process on startup.
-type HydraNodeStartupParams =
+type HydraNodeStartupParams (peerExtra :: Row Type) =
   { nodeId :: String
   , hydraNodeAddress :: HostPort
   , hydraNodeAdvertisedAddress :: Maybe HostPort
@@ -60,12 +64,18 @@ type HydraNodeStartupParams =
   , pparams :: FilePath
   , hydraScripts :: Array TransactionHash
   , contestPeriodSec :: Int
-  , peers :: Array HydraHeadPeer
+  , peers :: Array (Record (HydraHeadPeer peerExtra))
   }
 
 -- | Bidirectional JSON codec for `HydraNodeStartupParams`.
-hydraNodeStartupParamsCodec :: CA.JsonCodec HydraNodeStartupParams
-hydraNodeStartupParamsCodec =
+hydraNodeStartupParamsCodec
+  :: forall (peerExtra :: Row Type) (rl :: RowList Type)
+   . Row.Union peerExtra (HydraHeadPeer ()) (HydraHeadPeer peerExtra)
+  => RowList.RowToList peerExtra rl
+  => Record.Extra.Keys rl
+  => CA.JPropCodec (Record peerExtra)
+  -> CA.JsonCodec (HydraNodeStartupParams peerExtra)
+hydraNodeStartupParamsCodec peerExtraCodec =
   CA.object "HydraNodeStartupParams" $ CAR.record
     { nodeId: CA.string
     , hydraNodeAddress: hostPortStringCodec
@@ -78,22 +88,29 @@ hydraNodeStartupParamsCodec =
     , pparams: CA.string
     , hydraScripts: CA.array txHashCodec
     , contestPeriodSec: CA.int
-    , peers: CA.array hydraHeadPeerCodec
+    , peers: CA.array $ hydraHeadPeerCodec peerExtraCodec
     }
 
 -- | Configuration parameters for a single Hydra Head peer. When setting up a
 -- | Hydra Head, each node must specify the network addresses and public key
 -- | information of its respective peers.
-type HydraHeadPeer =
-  { hydraNodeAddress :: HostPort
+type HydraHeadPeer (extra :: Row Type) =
+  ( hydraNodeAddress :: HostPort
   , hydraVerificationKey :: FilePath
   , cardanoVerificationKey :: FilePath
-  }
+  | extra
+  )
 
 -- | Bi-directional JSON codec for `HydraHeadPeer`.
-hydraHeadPeerCodec :: CA.JsonCodec HydraHeadPeer
-hydraHeadPeerCodec =
-  CA.object "HydraHeadPeer" $ CAR.record
+hydraHeadPeerCodec
+  :: forall (extra :: Row Type) (rl :: RowList Type)
+   . Row.Union extra (HydraHeadPeer ()) (HydraHeadPeer extra)
+  => RowList.RowToList extra rl
+  => Record.Extra.Keys rl
+  => CA.JPropCodec (Record extra)
+  -> CA.JsonCodec (Record (HydraHeadPeer extra))
+hydraHeadPeerCodec extraCodec =
+  CA.object "HydraHeadPeer" $ unionRecordCodecs extraCodec $ CAR.record
     { hydraNodeAddress: hostPortStringCodec
     , hydraVerificationKey: CA.string
     , cardanoVerificationKey: CA.string
@@ -126,9 +143,9 @@ noopHydraNodeHandlers =
 -- |
 -- | NOTE: The hydra-node executable must be available in the PATH.
 spawnHydraNode
-  :: forall m
+  :: forall (m :: Type -> Type) (peerExtra :: Row Type)
    . MonadEffect m
-  => HydraNodeStartupParams
+  => HydraNodeStartupParams peerExtra
   -> HydraNodeHandlers
   -> m ChildProcess
 spawnHydraNode params handlers = liftEffect do

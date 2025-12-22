@@ -6,7 +6,7 @@ module HydraSdk.Example.Minimal.Config
 import Prelude
 
 import Cardano.Types (TransactionInput)
-import Data.Codec.Argonaut (JsonCodec, object, printJsonDecodeError, string) as CA
+import Data.Codec.Argonaut (JsonCodec, object, printJsonDecodeError, record, string) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Either (either)
@@ -20,7 +20,7 @@ import Node.Path (FilePath)
 import Node.Process (argv)
 
 type DelegateServerConfig =
-  { hydraNodeStartupParams :: HydraNodeStartupParams
+  { hydraNodeStartupParams :: HydraNodeStartupParams ()
   , blockfrostApiKeyFile :: FilePath
   , logLevel :: LogLevel
   , ctlLogLevel :: LogLevel
@@ -30,7 +30,7 @@ type DelegateServerConfig =
 delegateServerConfigCodec :: CA.JsonCodec DelegateServerConfig
 delegateServerConfigCodec =
   CA.object "DelegateServerConfig" $ CAR.record
-    { hydraNodeStartupParams: hydraNodeStartupParamsCodec
+    { hydraNodeStartupParams: hydraNodeStartupParamsCodec CA.record
     , blockfrostApiKeyFile: CA.string
     , logLevel: logLevelCodec
     , ctlLogLevel: logLevelCodec

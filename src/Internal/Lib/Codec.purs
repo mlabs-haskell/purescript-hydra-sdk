@@ -25,6 +25,7 @@ module HydraSdk.Internal.Lib.Codec
   , toCaJsonDecodeError
   , txCodec
   , txHashCodec
+  , unionRecordCodecs
   ) where
 
 import Prelude
@@ -67,7 +68,9 @@ import Data.Argonaut
 import Data.Bifunctor (lmap)
 import Data.ByteArray (ByteArray, byteArrayToHex, hexToByteArray)
 import Data.Codec.Argonaut
-  ( JsonCodec
+  ( Codec(Codec)
+  , JPropCodec
+  , JsonCodec
   , JsonDecodeError(TypeMismatch, UnexpectedValue, AtIndex, AtKey, Named, MissingValue)
   , codec'
   , decode
@@ -86,6 +89,7 @@ import Data.Newtype (wrap)
 import Data.Profunctor (wrapIso)
 import Data.String (Pattern(Pattern))
 import Data.String (split, stripSuffix, take) as String
+import Data.Tuple.Nested ((/\))
 import Data.UInt (fromString, toString) as UInt
 import Effect (Effect)
 import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
@@ -93,6 +97,36 @@ import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.FS.Sync (readTextFile) as FSSync
 import Node.Path (FilePath)
 import Partial.Unsafe (unsafePartial)
+import Prim.Row (class Union) as Row
+import Prim.RowList (class RowToList) as RowList
+import Record (union) as Record
+import Record.Extra (class Keys, pick) as Record.Extra
+
+unionRecordCodecs
+  :: forall r r0 r' rl r0l
+   . Row.Union r r0 r'
+  => RowList.RowToList r rl
+  => Record.Extra.Keys rl
+  => Row.Union r0 r r'
+  => RowList.RowToList r0 r0l
+  => Record.Extra.Keys r0l
+  => CA.JPropCodec (Record r)
+  -> CA.JPropCodec (Record r0)
+  -> CA.JPropCodec (Record r')
+unionRecordCodecs
+  (CA.Codec rDecode rEncode)
+  (CA.Codec r0Decode r0Encode) = CA.Codec decode encode
+  where
+  decode obj = do
+    r0Rec <- r0Decode obj
+    rRec <- rDecode obj
+    pure $ Record.union r0Rec rRec
+  encode rec =
+    let
+      rList /\ rRec = rEncode (Record.Extra.pick rec :: Record r)
+      r0List /\ r0Rec = r0Encode (Record.Extra.pick rec :: Record r0)
+    in
+      (rList <> r0List) /\ Record.union rRec r0Rec
 
 fromCaJsonDecodeError :: CA.JsonDecodeError -> A.JsonDecodeError
 fromCaJsonDecodeError = case _ of

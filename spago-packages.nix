@@ -1181,6 +1181,18 @@ let
         installPhase = "ln -s $src $out";
       };
 
+    "record-extra" = pkgs.stdenv.mkDerivation {
+        name = "record-extra";
+        version = "v5.0.1";
+        src = pkgs.fetchgit {
+          url = "https://github.com/justinwoo/purescript-record-extra.git";
+          rev = "a9a4b8201d154513017048fc41efa0eefa48fba2";
+          sha256 = "0190igayc2ghzjg1ggwl0dv0b2b7sg16n5dm9fyi39ygp48fvshp";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
     "refs" = pkgs.stdenv.mkDerivation {
         name = "refs";
         version = "v6.0.0";

@@ -24,7 +24,8 @@ of Hydra-based applications.
 
 | hydra-sdk   | hydra-node   | cardano-node |
 | ----------- | ------------ | ------------ |
-| **`0.1.0`** | **`0.19.0`** | **`10.1.2`** |
+| **`1.0.0`** | **`0.19.0`** | **`10.1.2`** |
+| **`2.0.0`** | **`1.2.0`**  | **`10.5.3`** |
 
 
 ## Preliminaries
@@ -56,11 +57,13 @@ a cluster of two nodes, with each node running the minimal example logic.
 directory of this repository. This will put you in the shell with all the
 necessary executables required to continue with the setup procedure.
 
-2. In [example/minimal/docker/cluster/](example/minimal/docker/cluster/) you
-can find configuration files for both nodes. The only field that needs to be
-updated here is the `blockfrostApiKey`, which should be set to a valid
-Blockfrost API key **for preprod**.
-Visit the [Blockfrost website](https://blockfrost.io/) to generate a fresh API key.
+2. Run `touch example/minimal/blockfrost.txt` to create a text file that will
+store your Blockfrost API key. Visit the
+[Blockfrost website](https://blockfrost.io/) to generate a new API key for the
+**preprod** network and paste it into this file. In the directory
+[example/minimal/docker/cluster/](example/minimal/docker/cluster/), you will
+find configuration files for both nodes. No changes are required here to start a
+functioning Hydra cluster, though you may adjust some settings if needed.
 
 3. Execute `make gen-keys` to generate the necessary Cardano and Hydra keys
 required by the underlying Hydra nodes. Cardano keys are used to authenticate

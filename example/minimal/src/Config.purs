@@ -6,7 +6,7 @@ module HydraSdk.Example.Minimal.Config
 import Prelude
 
 import Cardano.Types (TransactionInput)
-import Data.Codec.Argonaut (JsonCodec, object, printJsonDecodeError, string) as CA
+import Data.Codec.Argonaut (JsonCodec, object, printJsonDecodeError, record, string) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Either (either)
@@ -16,11 +16,12 @@ import Effect (Effect)
 import Effect.Exception (throw)
 import HydraSdk.Lib (caDecodeFile, logLevelCodec, orefCodec)
 import HydraSdk.Process (HydraNodeStartupParams, hydraNodeStartupParamsCodec)
+import Node.Path (FilePath)
 import Node.Process (argv)
 
 type DelegateServerConfig =
-  { hydraNodeStartupParams :: HydraNodeStartupParams
-  , blockfrostApiKey :: Maybe String
+  { hydraNodeStartupParams :: HydraNodeStartupParams ()
+  , blockfrostApiKeyFile :: FilePath
   , logLevel :: LogLevel
   , ctlLogLevel :: LogLevel
   , commitOutRef :: Maybe TransactionInput
@@ -29,8 +30,8 @@ type DelegateServerConfig =
 delegateServerConfigCodec :: CA.JsonCodec DelegateServerConfig
 delegateServerConfigCodec =
   CA.object "DelegateServerConfig" $ CAR.record
-    { hydraNodeStartupParams: hydraNodeStartupParamsCodec
-    , blockfrostApiKey: CA.maybe CA.string
+    { hydraNodeStartupParams: hydraNodeStartupParamsCodec CA.record
+    , blockfrostApiKeyFile: CA.string
     , logLevel: logLevelCodec
     , ctlLogLevel: logLevelCodec
     , commitOutRef: CA.maybe orefCodec

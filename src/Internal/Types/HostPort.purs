@@ -1,8 +1,11 @@
 module HydraSdk.Internal.Types.HostPort
   ( HostPort
-  , hostPortCodec
+  , hostCodec
+  , hostPortObjectCodec
   , hostPortOption
   , hostPortParser
+  , hostPortStringCodec
+  , portCodec
   , printHost
   , printHostPort
   , printPort
@@ -11,7 +14,8 @@ module HydraSdk.Internal.Types.HostPort
 
 import Prelude
 
-import Data.Codec.Argonaut (JsonCodec, prismaticCodec, string) as CA
+import Data.Codec.Argonaut (JsonCodec, int, object, prismaticCodec, string) as CA
+import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Either (hush)
 import Data.Int (decimal, toStringAs) as Int
 import Data.Maybe (Maybe)
@@ -20,18 +24,37 @@ import Options.Applicative (ReadM) as Optparse
 import Parsing (Parser, runParser)
 import URI (Host, Port)
 import URI.Host (parser, print) as Host
-import URI.Port (parser, toInt) as Port
+import URI.Port (fromInt, parser, toInt) as Port
 
-type HostPort = { host :: Host, port :: Port }
+type HostPort = { hostname :: Host, port :: Port }
 
-hostPortCodec :: CA.JsonCodec HostPort
-hostPortCodec = CA.prismaticCodec "HostPort" readHostPort printHostPort CA.string
+hostPortStringCodec :: CA.JsonCodec HostPort
+hostPortStringCodec =
+  CA.prismaticCodec "HostPort:str" readHostPort printHostPort
+    CA.string
+
+hostPortObjectCodec :: CA.JsonCodec HostPort
+hostPortObjectCodec =
+  CA.object "HostPort:obj" $ CAR.record
+    { hostname: hostCodec
+    , port: portCodec
+    }
+
+hostCodec :: CA.JsonCodec Host
+hostCodec =
+  CA.prismaticCodec "Host" (hush <<< flip runParser Host.parser) Host.print
+    CA.string
+
+portCodec :: CA.JsonCodec Port
+portCodec =
+  CA.prismaticCodec "Port" Port.fromInt Port.toInt
+    CA.int
 
 hostPortOption :: Optparse.ReadM HostPort
 hostPortOption = parserReader "HostPort" hostPortParser
 
 printHost :: HostPort -> String
-printHost = Host.print <<< _.host
+printHost = Host.print <<< _.hostname
 
 printPort :: HostPort -> String
 printPort = Int.toStringAs Int.decimal <<< Port.toInt <<< _.port
@@ -40,7 +63,7 @@ printHostPort :: HostPort -> String
 printHostPort hp = printHost hp <> ":" <> printPort hp
 
 hostPortParser :: Parser String HostPort
-hostPortParser = { host: _, port: _ } <$> Host.parser <*> Port.parser
+hostPortParser = { hostname: _, port: _ } <$> Host.parser <*> Port.parser
 
 readHostPort :: String -> Maybe HostPort
 readHostPort = hush <<< flip runParser hostPortParser

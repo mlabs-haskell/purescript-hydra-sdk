@@ -44,6 +44,7 @@
   , "profunctor"
   , "quickcheck"
   , "record"
+  , "record-extra"
   , "safely"
   , "spec"
   , "strings"

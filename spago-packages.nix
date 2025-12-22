@@ -185,6 +185,18 @@ let
         installPhase = "ln -s $src $out";
       };
 
+    "cardano-data-lite" = pkgs.stdenv.mkDerivation {
+        name = "cardano-data-lite";
+        version = "44a08930844221afc4ef750104940f81a75b996e";
+        src = pkgs.fetchgit {
+          url = "https://github.com/mlabs-haskell/purescript-cardano-data-lite";
+          rev = "44a08930844221afc4ef750104940f81a75b996e";
+          sha256 = "1c38s9dyin4ydqjv1qfd5yb5jyz0vifh5y0nkpbhyd45fgf17484";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
     "cardano-plutus-data-schema" = pkgs.stdenv.mkDerivation {
         name = "cardano-plutus-data-schema";
         version = "v1.0.0";
@@ -197,25 +209,13 @@ let
         installPhase = "ln -s $src $out";
       };
 
-    "cardano-serialization-lib" = pkgs.stdenv.mkDerivation {
-        name = "cardano-serialization-lib";
-        version = "v2.0.0";
-        src = pkgs.fetchgit {
-          url = "https://github.com/mlabs-haskell/purescript-cardano-serialization-lib";
-          rev = "d6ca2f9463b3d4e1cfa98e9964edbe7bfed02905";
-          sha256 = "05f26v1xr7lkiw57rcqhjng299p7ly90wxqq9jay743pwvrysq0b";
-        };
-        phases = "installPhase";
-        installPhase = "ln -s $src $out";
-      };
-
     "cardano-types" = pkgs.stdenv.mkDerivation {
         name = "cardano-types";
-        version = "v3.0.0";
+        version = "v5.0.0";
         src = pkgs.fetchgit {
-          url = "https://github.com/mlabs-haskell/purescript-cardano-types";
-          rev = "71b204c7c9c83b8280ed3ed14837d76b8ac0a6fe";
-          sha256 = "1kffscail4kp5pygdv8nd2bclwd6c0cygkn5mn5sllnn29a63mpf";
+          url = "https://github.com/mlabs-haskell/purescript-cardano-types.git";
+          rev = "348fbbefa8bec5050e8492f5a9201ac5bb17c9d9";
+          sha256 = "06977niflqdpk4kw6d3480ak0m2rwi9fngjblxnqddqpdyj6zq1d";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -1027,11 +1027,11 @@ let
 
     "plutus-types" = pkgs.stdenv.mkDerivation {
         name = "plutus-types";
-        version = "v1.0.1";
+        version = "v2.0.0";
         src = pkgs.fetchgit {
           url = "https://github.com/mlabs-haskell/purescript-plutus-types";
-          rev = "dfec05e2dee79ee8dafad3d698906966ea6628bb";
-          sha256 = "0milz16kdl1pd0i6b8ibxpacdd2r7p6n96gl1g6h41v9bccs69p9";
+          rev = "c5187d9b8729dcc86d3673c7570c5a3f7755648e";
+          sha256 = "1acd212gqkgg4snnzjf61rpwydxhnypk3y9pajpmi6gyn4gpgqw5";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -1121,6 +1121,18 @@ let
         installPhase = "ln -s $src $out";
       };
 
+    "quickcheck-combinators" = pkgs.stdenv.mkDerivation {
+        name = "quickcheck-combinators";
+        version = "v0.1.3";
+        src = pkgs.fetchgit {
+          url = "https://github.com/athanclark/purescript-quickcheck-combinators.git";
+          rev = "293e5af07ae47b61d4eae5defef4c0f472bfa9ca";
+          sha256 = "0bqxz1k2khm1c3j5aqj6cmbw0gbrhs5hl6f16bbqjb8xhglv1wx2";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
     "quickcheck-laws" = pkgs.stdenv.mkDerivation {
         name = "quickcheck-laws";
         version = "v7.0.0";
@@ -1169,6 +1181,18 @@ let
         installPhase = "ln -s $src $out";
       };
 
+    "record-extra" = pkgs.stdenv.mkDerivation {
+        name = "record-extra";
+        version = "v5.0.1";
+        src = pkgs.fetchgit {
+          url = "https://github.com/justinwoo/purescript-record-extra.git";
+          rev = "a9a4b8201d154513017048fc41efa0eefa48fba2";
+          sha256 = "0190igayc2ghzjg1ggwl0dv0b2b7sg16n5dm9fyi39ygp48fvshp";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
     "refs" = pkgs.stdenv.mkDerivation {
         name = "refs";
         version = "v6.0.0";
@@ -1212,6 +1236,18 @@ let
           url = "https://github.com/purescript-spec/purescript-spec.git";
           rev = "1ae536c4d9848d26087fe5e0606409740aa421b7";
           sha256 = "1vyk0fn39qfwx4i7vanazr5v0q0w0sxsxzmlliwlpcb9kvd1b2b3";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
+    "spec-quickcheck" = pkgs.stdenv.mkDerivation {
+        name = "spec-quickcheck";
+        version = "v5.0.0";
+        src = pkgs.fetchgit {
+          url = "https://github.com/purescript-spec/purescript-spec-quickcheck.git";
+          rev = "c83de337db1f74ff75e0d7c574a2f7407bc5f2b2";
+          sha256 = "1y9rzb8kbahhchplswdxrjqm4qjkv1bnv9mzg8v62m1ipk3kdndj";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";

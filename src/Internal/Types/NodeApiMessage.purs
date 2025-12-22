@@ -13,7 +13,9 @@ module HydraSdk.Internal.Types.NodeApiMessage
       ( Greetings
       , PeerConnected
       , PeerDisconnected
-      , PeerHandshakeFailure
+      , NetworkConnected
+      , NetworkDisconnected
+      , NetworkVersionMismatch
       , HeadIsInitializing
       , Committed
       , HeadIsOpen
@@ -40,6 +42,8 @@ module HydraSdk.Internal.Types.NodeApiMessage
       )
   , IgnoredHeadInitMessage
   , InvalidInputMessage
+  , NetworkConnMessage
+  , NetworkVersionMismatchMessage
   , NewTxMessage
   , PeerConnMessage
   , PostChainTx
@@ -75,7 +79,6 @@ module HydraSdk.Internal.Types.NodeApiMessage
       , FailedToConstructFanoutTx
       )
   , PostTxOnchainFailedMessage
-  , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
   , SeqTimestamp
   , SnapshotConfirmedMessage
@@ -91,6 +94,7 @@ import Prelude
 import Aeson (Aeson)
 import Cardano.Types (Coin, Ed25519KeyHash, PublicKey, TransactionHash)
 import Data.Codec.Argonaut (JPropCodec, JsonCodec, array, int, json, object, string) as CA
+import Data.Codec.Argonaut.Compat (maybe) as CACompat
 import Data.Codec.Argonaut.Record (class RowListCodec, optional, record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
 import Data.DateTime (DateTime)
@@ -114,6 +118,7 @@ import HydraSdk.Internal.Types.HeadStatus
       )
   , headStatusCodec
   )
+import HydraSdk.Internal.Types.HostPort (HostPort, hostPortObjectCodec)
 import HydraSdk.Internal.Types.Snapshot
   ( ConfirmedSnapshot
   , HydraSnapshot
@@ -135,7 +140,9 @@ data HydraNodeApi_InMessage
   = Greetings GreetingsMessage
   | PeerConnected PeerConnMessage
   | PeerDisconnected PeerConnMessage
-  | PeerHandshakeFailure PeerHandshakeFailureMessage
+  | NetworkConnected NetworkConnMessage
+  | NetworkDisconnected NetworkConnMessage
+  | NetworkVersionMismatch NetworkVersionMismatchMessage
   | HeadIsInitializing HeadInitMessage
   | Committed CommittedMessage
   | HeadIsOpen HeadOpenMessage
@@ -164,7 +171,9 @@ hydraNodeApiInMessageCodec =
     { "Greetings": greetingsMessageCodec
     , "PeerConnected": peerConnMessageCodec
     , "PeerDisconnected": peerConnMessageCodec
-    , "PeerHandshakeFailure": peerHandshakeFailureMessageCodec
+    , "NetworkConnected": networkConnMessageCodec
+    , "NetworkDisconnected": networkConnMessageCodec
+    , "NetworkVersionMismatch": networkVersionMismatchMessageCodec
     , "HeadIsInitializing": headInitMessageCodec
     , "Committed": committedMessageCodec
     , "HeadIsOpen": headOpenMessageCodec
@@ -220,7 +229,7 @@ seqTimestampCodec =
     }
 
 ----------------------------------------------------------------------
--- 0. Greetings
+-- Greetings
 
 -- | A friendly welcome message which tells a client something about
 -- | the node. Currently used for knowing what Party the server
@@ -250,42 +259,48 @@ greetingsMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 1. PeerConnected / 2. PeerDisconnected
+-- PeerConnected / PeerDisconnected
 
 -- | A message indicating a change in the connection status
 -- | of a Head peer. 
 type PeerConnMessage = SeqTimestamp
-  ( peer :: String
+  ( peer :: HostPort
   )
 
 peerConnMessageCodec :: CA.JPropCodec PeerConnMessage
 peerConnMessageCodec =
   seqTimestampCodec
-    { peer: CA.string
+    { peer: hostPortObjectCodec
     }
 
 ----------------------------------------------------------------------
--- 3. PeerHandshakeFailure
+-- NetworkConnected / NetworkDisconnected
 
--- | A peer has failed to negotiate a protocol.
--- TODO: remoteHost: there appears to be a discrepancy between API
--- docs and the actual implementation
-type PeerHandshakeFailureMessage = SeqTimestamp
-  ( remoteHost :: Aeson
-  , ourVersion :: Int
-  , theirVersions :: Array Int
+-- | A message indicating whether the L2 network is up or not.
+type NetworkConnMessage = SeqTimestamp ()
+
+networkConnMessageCodec :: CA.JPropCodec NetworkConnMessage
+networkConnMessageCodec = seqTimestampCodec {}
+
+----------------------------------------------------------------------
+-- NetworkVersionMismatch
+
+-- | The version of our network stack is not consistent with other
+-- | nodes on the network.
+type NetworkVersionMismatchMessage = SeqTimestamp
+  ( ourVersion :: Int
+  , theirVersion :: Maybe Int
   )
 
-peerHandshakeFailureMessageCodec :: CA.JPropCodec PeerHandshakeFailureMessage
-peerHandshakeFailureMessageCodec =
+networkVersionMismatchMessageCodec :: CA.JPropCodec NetworkVersionMismatchMessage
+networkVersionMismatchMessageCodec =
   seqTimestampCodec
-    { remoteHost: CA.json
-    , ourVersion: CA.int
-    , theirVersions: CA.array CA.int
+    { ourVersion: CA.int
+    , theirVersion: CACompat.maybe CA.int
     }
 
 ----------------------------------------------------------------------
--- 4. HeadIsInitializing
+-- HeadIsInitializing
 
 -- | An Init transaction has been observed onchain, with the given
 -- | Head ID.
@@ -305,7 +320,7 @@ headInitMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 5. Committed
+-- Committed
 
 -- | A Commit transaction from a Head participant has been observed
 -- | onchain.
@@ -325,7 +340,7 @@ committedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 6. HeadIsOpen
+-- HeadIsOpen
 
 -- | All parties have committed, and a successful CollectCom transaction
 -- | was observed onchain.
@@ -342,7 +357,7 @@ headOpenMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 7. HeadIsClosed
+-- HeadIsClosed
 
 -- | A Close transaction has been observed onchain, the head is now
 -- | closed and the contestation phase begins.
@@ -361,7 +376,7 @@ headClosedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 8. HeadIsContested
+-- HeadIsContested
 
 -- | A Contest transaction has been observed onchain, meaning that
 -- | the Head state has been successfully contested and the returned
@@ -382,7 +397,7 @@ headContestedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 9. ReadyToFanout
+-- ReadyToFanout
 
 -- | The contestation period has passed and the Head can now be
 -- | finalized by a Fanout transaction.
@@ -397,7 +412,7 @@ readyToFanoutMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 10. HeadIsAborted
+-- HeadIsAborted
 
 -- | One of the participants did Abort the Head before all commits
 -- | were done or collected.
@@ -414,7 +429,7 @@ headAbortedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 11. HeadIsFinalized
+-- HeadIsFinalized
 
 -- | The Head was already closed and the contestation period
 -- | is now over.
@@ -431,25 +446,25 @@ headFinalizedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 12. TxValid
+-- TxValid
 
 -- | Observed a valid transaction inside the Head. Note that a node
 -- | observes its own transactions and it may still happen that this
 -- | transaction is not included in a snapshot.
 type TxValidMessage = SeqTimestamp
   ( headId :: String -- ScriptHash
-  , transaction :: HydraTx
+  , transactionId :: TransactionHash
   )
 
 txValidMessageCodec :: CA.JPropCodec TxValidMessage
 txValidMessageCodec =
   seqTimestampCodec
     { headId: CA.string -- scriptHashCodec
-    , transaction: hydraTxCodec
+    , transactionId: txHashCodec
     }
 
 ----------------------------------------------------------------------
--- 13. TxInvalid
+-- TxInvalid
 
 -- | Observed an invalid transaction inside the head. Either it is not
 -- | yet valid (because some other transactions need to be seen first),
@@ -477,7 +492,7 @@ txInvalidMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 14. SnapshotConfirmed
+-- SnapshotConfirmed
 
 -- | The given snapshot has been multi-signed by all Head participants
 -- | and is now confirmed.
@@ -494,7 +509,7 @@ snapshotConfirmedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 15. InvalidInput
+-- InvalidInput
 
 -- | Emitted by the server when it has failed to parse some client
 -- | input. It returns the malformed input as well as some hint about
@@ -512,7 +527,7 @@ invalidInputMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 16. PostTxOnchainFailedMessage
+-- PostTxOnchainFailedMessage
 
 -- | Something wrong happened when trying to post a transaction
 -- | on-chain. Provides information about what kind of transaction was
@@ -530,7 +545,7 @@ postTxOnchainFailedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 17. CommandFailed
+-- CommandFailed
 
 -- | Emitted by the server when a well-formed client input was not
 -- | processable. For example, if trying to close a non opened head
@@ -546,7 +561,7 @@ commandFailedMessageCodec =
     }
 
 ----------------------------------------------------------------------
--- 18. IgnoredHeadInitializing 
+-- IgnoredHeadInitializing 
 
 -- | An Init transaction has been observed on-chain, with the given
 -- | HeadId and the given participant identifiers, but we are not part
@@ -856,3 +871,4 @@ newTxMessageCodec =
   CAR.record
     { transaction: hydraTxCodec
     }
+

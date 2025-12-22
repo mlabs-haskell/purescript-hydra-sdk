@@ -18,9 +18,11 @@ import Contract.TxConstraints (mustPayToPubKeyWithDatum, mustSpendPubKeyOutput) 
 import Contract.UnbalancedTx (mkUnbalancedTx)
 import Contract.Wallet (ownPaymentPubKeyHashes)
 import Control.Monad.Error.Class (liftMaybe)
+import Control.Monad.Reader.Class (local)
 import Data.Array (find, head) as Array
-import Data.Map (fromFoldable, toUnfoldable) as Map
-import Data.Maybe (Maybe(Just))
+import Data.Either (Either(Right))
+import Data.Map (fromFoldable, lookup, toUnfoldable) as Map
+import Data.Maybe (Maybe(Just), maybe)
 import Data.Newtype (unwrap, wrap)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\))
@@ -30,7 +32,7 @@ import Test.QuickCheck (arbitrary)
 import Test.QuickCheck.Gen (randomSampleOne)
 
 placeArbitraryDatumL2 :: UtxoMap -> Contract Transaction
-placeArbitraryDatumL2 snapshotUtxos = do
+placeArbitraryDatumL2 snapshotUtxos = withPatchedGetUtxoByOrefQuery snapshotUtxos do
   pkh <- liftedM "placeArbitraryDatumL2: Could not get own public key hash"
     (Array.head <$> ownPaymentPubKeyHashes)
   utxo <-
@@ -60,3 +62,13 @@ placeArbitraryDatumL2 snapshotUtxos = do
   balancedTx <- balanceTx unbalancedTx usedUtxos balancerConstraints
   balancedSignedTx <- signTransaction balancedTx
   pure balancedSignedTx
+
+withPatchedGetUtxoByOrefQuery :: forall (a :: Type). UtxoMap -> Contract a -> Contract a
+withPatchedGetUtxoByOrefQuery snapshotUtxos =
+  local \env -> env
+    { provider = env.provider
+        { getUtxoByOref = \oref ->
+            maybe (env.provider.getUtxoByOref oref) (pure <<< Right <<< Just) $
+              Map.lookup oref snapshotUtxos
+        }
+    }

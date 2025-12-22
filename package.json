@@ -1,9 +1,9 @@
 {
   "name": "purescript-hydra-sdk",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "type": "module",
   "dependencies": {
-    "@mlabs-haskell/cardano-serialization-lib-gc": "v13.2.0",
+    "@errfrom/cardano-data-lite": "1.0.1",
     "@mlabs-haskell/json-bigint": "2.0.0",
     "partysocket": "1.0.2",
     "uuid": "^8.3.2",

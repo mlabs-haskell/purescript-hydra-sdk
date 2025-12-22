@@ -27,7 +27,7 @@ format: requires-nix-shell
 	@echo -e '\n3. Formatting Nix sources:'
 	nixpkgs-fmt ${nix-sources}
 	@echo -e '\n4. Generating table of contents for Markdown files:'
-	doctoc README.md --github --notitle
+	doctoc README.md CHANGELOG.md --github --notitle
 
 repl: requires-nix-shell
 	spago repl

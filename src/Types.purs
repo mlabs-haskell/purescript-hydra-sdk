@@ -8,6 +8,7 @@ module HydraSdk.Types
   , module ExportHttpError
   , module ExportNetwork
   , module ExportNodeApiMessage
+  , module ExportQueryLayer
   , module ExportSnapshot
   , module ExportTx
   , module ExportUtxoMap
@@ -43,9 +44,12 @@ import HydraSdk.Internal.Types.HeadStatus
 
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
-  , hostPortCodec
+  , hostCodec
+  , hostPortObjectCodec
   , hostPortOption
   , hostPortParser
+  , hostPortStringCodec
+  , portCodec
   , printHost
   , printHostPort
   , printPort
@@ -72,7 +76,9 @@ import HydraSdk.Internal.Types.NodeApiMessage
       ( Greetings
       , PeerConnected
       , PeerDisconnected
-      , PeerHandshakeFailure
+      , NetworkConnected
+      , NetworkDisconnected
+      , NetworkVersionMismatch
       , HeadIsInitializing
       , Committed
       , HeadIsOpen
@@ -99,6 +105,8 @@ import HydraSdk.Internal.Types.NodeApiMessage
       )
   , IgnoredHeadInitMessage
   , InvalidInputMessage
+  , NetworkConnMessage
+  , NetworkVersionMismatchMessage
   , NewTxMessage
   , PeerConnMessage
   , PostChainTx
@@ -134,7 +142,6 @@ import HydraSdk.Internal.Types.NodeApiMessage
       , FailedToConstructFanoutTx
       )
   , PostTxOnchainFailedMessage
-  , PeerHandshakeFailureMessage
   , ReadyToFanoutMessage
   , SeqTimestamp
   , SnapshotConfirmedMessage
@@ -144,6 +151,11 @@ import HydraSdk.Internal.Types.NodeApiMessage
   , hydraNodeApiOutMessageCodec
   , nextHeadStatus
   ) as ExportNodeApiMessage
+
+import HydraSdk.Internal.Types.QueryLayer
+  ( QueryLayer(CardanoNode, Blockfrost)
+  , queryLayerCodec
+  ) as ExportQueryLayer
 
 import HydraSdk.Internal.Types.Snapshot
   ( ConfirmedSnapshot(InitialSnapshot, ConfirmedSnapshot)

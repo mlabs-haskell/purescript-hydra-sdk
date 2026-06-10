@@ -25,7 +25,7 @@ import HydraSdk.Internal.Lib.WebSocket (WebSocket, WebSocketUrl, mkWebSocket)
 import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed), printHeadStatus)
 import HydraSdk.Internal.Types.NodeApiMessage
   ( HydraNodeApi_InMessage
-  , HydraNodeApi_OutMessage(Init, Abort, NewTx, Close, Contest, Fanout)
+  , HydraNodeApi_OutMessage(Init, NewTx, Close, Contest, Fanout)
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   , nextHeadStatus
@@ -37,7 +37,6 @@ import HydraSdk.Internal.Types.Tx (mkHydraTx)
 type HydraNodeApiWebSocket (m :: Type -> Type) =
   { baseWs :: WebSocket m HydraNodeApi_InMessage HydraNodeApi_OutMessage
   , initHead :: Effect Unit
-  , abortHead :: Effect Unit
   , submitTxL2 :: Transaction -> Effect Unit
   , closeHead :: Effect Unit
   , challengeSnapshot :: Effect Unit
@@ -131,7 +130,6 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
     hydraNodeApiWs =
       { baseWs: ws
       , initHead: ws.send Init
-      , abortHead: ws.send Abort
       , submitTxL2: ws.send <<< NewTx <<< { transaction: _ } <<< mkHydraTx
       , closeHead:
           case txRetryStrategies.close of

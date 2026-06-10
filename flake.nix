@@ -9,13 +9,13 @@
   inputs = {
     nixpkgs.follows = "ctl/nixpkgs";
     cardano-node.follows = "ctl/cardano-node";
-    ctl.url = "github:Plutonomicon/cardano-transaction-lib/8ba78bf6f1fc3016844cdb95ce8dcde3f0f99927";
+    ctl.url = "github:Plutonomicon/cardano-transaction-lib/723052ce847c0fd9625243cd188af035b8a91b87";
     hydra = {
-      url = "github:input-output-hk/hydra/1.2.0";
+      url = "github:input-output-hk/hydra/2.1.0";
       inputs.cardano-node.follows = "cardano-node";
     };
     hydra-fixtures = {
-      url = "github:input-output-hk/hydra/1.2.0";
+      url = "github:input-output-hk/hydra/2.1.0";
       flake = false;
     };
   };

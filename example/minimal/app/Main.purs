@@ -29,6 +29,7 @@ import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Newtype (unwrap)
 import Data.Posix.Signal (Signal(SIGINT, SIGTERM))
 import Data.Traversable (traverse_)
+import Data.Tuple (Tuple(Tuple), fst)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, runAff_)
 import Effect.Aff.Class (liftAff)
@@ -62,15 +63,18 @@ import HydraSdk.Types
   ( HydraHeadStatus(HeadStatus_Idle, HeadStatus_Closed)
   , HydraNodeApi_InMessage
       ( Greetings
-      , HeadIsInitializing
-      , HeadIsOpen
       , SnapshotConfirmed
+      , HeadIsOpen
       , HeadIsClosed
       , HeadIsContested
       , ReadyToFanout
       , HeadIsFinalized
+      , NodeSynced
+      , CommitRecorded
       )
   , HydraSnapshot(HydraSnapshot)
+  , SyncStatus(InSync)
+  , emptySnapshot
   , hydraSnapshotCodec
   , mkSimpleCommitRequest
   , printHostPort
@@ -160,9 +164,49 @@ messageHandler ws =
     Left _rawMessage -> pure unit
     Right message ->
       case message of
-        Greetings { headStatus } ->
+        Greetings { headStatus, chainSyncedStatus } ->
+          when (headStatus == HeadStatus_Idle && chainSyncedStatus == InSync) $
+            liftEffect ws.initHead
+        NodeSynced -> do
+          headStatus <- readHeadStatus
           when (headStatus == HeadStatus_Idle) $
             liftEffect ws.initHead
+        HeadIsOpen { headId } -> do
+          { commitUtxo, config: { hydraNodeStartupParams: { hydraNodeApiAddress } } } <- ask
+          let
+            payload = mkSimpleCommitRequest $ Map.fromFoldable [ commitUtxo ]
+            hydraNodeHttpUrl = "http://" <> printHostPort hydraNodeApiAddress
+          liftAff (commitRequest hydraNodeHttpUrl payload) >>= case _ of
+            Left httpErr ->
+              throwError $ Error.error $ "Commit request failed with error: "
+                <> show httpErr
+            Right { cborHex } -> do
+              case decodeCbor cborHex of
+                Just commitTx -> do
+                  txHash <- runContractInApp $ submit =<< fixCommitTx commitTx
+                  logInfo' $ "Deposited funds to the Head: " <> cborBytesToHex
+                    (encodeCbor txHash)
+                Nothing ->
+                  throwError $ Error.error "Could not decode CommitTx CBOR"
+        {-
+        CommitRecorded { utxoToCommit } -> do
+          { commitUtxo: Tuple commitOref _ } <- ask
+          when ((fst <$> unwrap utxoToCommit) == Array.singleton commitOref) do
+          
+        -}
+
+        {-
+          logInfo' $ "Head ID: " <> headId
+          setUtxoSnapshot $ HydraSnapshot
+            { snapshotNumber: zero
+            , utxo: emptySnapshot
+            , confirmed: mempty
+            }
+          tx <- runContractInApp $ placeArbitraryDatumL2 $ toUtxoMap utxo
+          liftEffect $ ws.submitTxL2 tx
+-}
+
+        {-
         HeadIsInitializing _ -> do
           { commitUtxo, config: { hydraNodeStartupParams: { hydraNodeApiAddress } } } <- ask
           let
@@ -189,6 +233,7 @@ messageHandler ws =
             }
           tx <- runContractInApp $ placeArbitraryDatumL2 $ toUtxoMap utxo
           liftEffect $ ws.submitTxL2 tx
+        -}
         SnapshotConfirmed { snapshot } -> do
           setUtxoSnapshot snapshot
           { config: { hydraNodeStartupParams: { peers } } } <- ask

@@ -43,7 +43,7 @@ build-example: requires-nix-shell
 		spago build --purs-args ${purs-args}
 
 run-example: docker-cleanup
-	docker compose -f ${example-docker} up --build --no-attach cardano-node
+	docker compose -f ${example-docker} up --build
 
 docker-cleanup:
 	docker compose -f ${example-docker} rm --force --stop

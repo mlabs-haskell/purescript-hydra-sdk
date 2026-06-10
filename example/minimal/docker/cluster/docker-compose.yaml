@@ -1,31 +1,44 @@
 services:
-  cardano-node:
-    image: ghcr.io/intersectmbo/cardano-node:10.5.3
-    environment:
-      - NETWORK=preprod
+  # cardano-node:
+    # image: ghcr.io/intersectmbo/cardano-node:10.5.3
+    # attach: false
+    # environment:
+      # - NETWORK=preprod
+    # volumes:
+      # - node-db:/data/db
+      # - node-ipc:/ipc
+    # restart: on-failure
+    # healthcheck:
+      # test: ["CMD-SHELL", "[ \"$(cardano-cli query tip --testnet-magic=1 --socket-path=/ipc/node.socket | tail -c 9 | head -c 5)\" == \"100.0\" ]"]
+      # interval: 10s
+      # retries: 8640
+    # logging:
+      # driver: "json-file"
+      # options:
+        # max-size: "200k"
+        # max-file: "10"
+
+  etcd-logger:
+    image: busybox
+    attach: false
+    command: tail -F /var/log/etcd/etcd.log
     volumes:
-      - node-db:/data/db
-      - node-ipc:/ipc
+      - etcd-logs:/var/log/etcd
+    depends_on:
+      - delegate-node-a
+      - delegate-node-b
     restart: on-failure
-    healthcheck:
-      test: ["CMD-SHELL", "[ \"$(cardano-cli query tip --testnet-magic=1 --socket-path=/ipc/node.socket | tail -c 9 | head -c 5)\" == \"100.0\" ]"]
-      interval: 10s
-      retries: 8640
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "200k"
-        max-file: "10"
 
   delegate-node-a:
     build:
       context: "../../../.."
       dockerfile: "example/minimal/docker/node/Dockerfile"
-    depends_on:
-      cardano-node:
-        condition: service_healthy
+    # depends_on:
+      # cardano-node:
+        # condition: service_healthy
     command: "config.json"
     volumes:
+      - etcd-logs:/var/log/etcd
       - type: "bind"
         source: "./config-a.json"
         target: "/app/example/minimal/config.json"
@@ -43,11 +56,12 @@ services:
     build:
       context: "../../../.."
       dockerfile: "example/minimal/docker/node/Dockerfile"
-    depends_on:
-      cardano-node:
-        condition: service_healthy
+    # depends_on:
+      # cardano-node:
+        # condition: service_healthy
     command: "config.json"
     volumes:
+      - etcd-logs:/var/log/etcd
       - type: "bind"
         source: "./config-b.json"
         target: "/app/example/minimal/config.json"
@@ -66,3 +80,4 @@ volumes:
   hydra-persist-b:
   node-db:
   node-ipc:
+  etcd-logs:

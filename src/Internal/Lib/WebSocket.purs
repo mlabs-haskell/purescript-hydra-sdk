@@ -70,6 +70,7 @@ mkWebSocket builder =
                 Left decodeErr -> do
                   logError $ "mkWebSocket:onMessage: Decode error: " <>
                     CA.printJsonDecodeError decodeErr
+                  logError $ "mkWebSocket:onMessage: Raw message: " <> msgRaw
                   callback $ Left msgRaw
                 Right msg ->
                   callback $ Right msg

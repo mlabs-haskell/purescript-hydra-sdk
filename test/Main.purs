@@ -24,7 +24,7 @@ main = do
   interruptOnSignal SIGTERM fiber
 
 runnerConfig :: Config
-runnerConfig = defaultConfig { timeout = Just $ wrap 90000.0 }
+runnerConfig = defaultConfig { timeout = Just $ wrap 300_000.0 }
 
 interruptOnSignal :: forall a. Signal -> Fiber a -> Effect Unit
 interruptOnSignal signal fiber =

@@ -1,4 +1,4 @@
-.PHONY: build, test, format, repl, docs, build-example, run-example, docker-cleanup, gen-keys
+.PHONY: build test format repl docs build-example test-example run-example docker-cleanup gen-keys
 
 ps-sources := $(shell fd --no-ignore-parent -epurs)
 js-sources := $(shell fd --no-ignore-parent -ejs)
@@ -41,6 +41,10 @@ docs: requires-nix-shell
 build-example: requires-nix-shell
 	cd example/minimal && \
 		spago build --purs-args ${purs-args}
+
+test-example: requires-nix-shell
+	cd example/minimal && \
+		spago run --main Test.HydraSdk.Main
 
 run-example: docker-cleanup
 	docker compose -f ${example-docker} up --build

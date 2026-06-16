@@ -13,6 +13,7 @@
   , "codec-aeson"
   , "control"
   , "datetime"
+  , "debug"
   , "effect"
   , "either"
   , "errors"

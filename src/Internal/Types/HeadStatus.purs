@@ -2,7 +2,6 @@ module HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
       ( HeadStatus_Unknown
       , HeadStatus_Idle
-      , HeadStatus_Initializing
       , HeadStatus_Open
       , HeadStatus_Closed
       , HeadStatus_FanoutPossible
@@ -25,7 +24,6 @@ import Test.QuickCheck.Arbitrary (class Arbitrary, genericArbitrary)
 data HydraHeadStatus
   = HeadStatus_Unknown
   | HeadStatus_Idle
-  | HeadStatus_Initializing
   | HeadStatus_Open
   | HeadStatus_Closed
   | HeadStatus_FanoutPossible
@@ -57,7 +55,6 @@ headStatusCodec =
 readHeadStatus :: String -> HydraHeadStatus
 readHeadStatus = case _ of
   "Idle" -> HeadStatus_Idle
-  "Initializing" -> HeadStatus_Initializing
   "Open" -> HeadStatus_Open
   "Closed" -> HeadStatus_Closed
   "FanoutPossible" -> HeadStatus_FanoutPossible
@@ -67,7 +64,6 @@ readHeadStatus = case _ of
 printHeadStatus :: HydraHeadStatus -> String
 printHeadStatus = case _ of
   HeadStatus_Idle -> "Idle"
-  HeadStatus_Initializing -> "Initializing"
   HeadStatus_Open -> "Open"
   HeadStatus_Closed -> "Closed"
   HeadStatus_FanoutPossible -> "FanoutPossible"

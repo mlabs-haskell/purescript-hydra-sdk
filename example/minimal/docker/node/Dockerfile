@@ -11,7 +11,7 @@ WORKDIR example/minimal
 RUN npm install -g purescript@0.15.8
 RUN npm install -g spago@0.21.0
 
-ARG HYDRA_VERSION=2.1.0
+ARG HYDRA_VERSION=2.2.0
 RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/${HYDRA_VERSION}/hydra-x86_64-linux-${HYDRA_VERSION}.zip
 RUN unzip -d /usr/local/bin/ hydra-x86_64-linux-${HYDRA_VERSION}.zip
 RUN chmod +x /usr/local/bin/hydra-node

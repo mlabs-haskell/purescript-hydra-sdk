@@ -9,13 +9,21 @@ module HydraSdk.Example.Minimal.App
   , runApp
   , runAppEff
   , runContractInApp
+  , runL2ContractInApp
   , setHeadStatus
   , setUtxoSnapshot
   ) where
 
 import Prelude
 
-import Cardano.Types (NetworkId(MainnetId, TestnetId), TransactionInput, TransactionOutput)
+import Cardano.Types
+  ( NetworkId(MainnetId, TestnetId)
+  , TransactionHash
+  , TransactionInput
+  , TransactionOutput
+  )
+import Cardano.Types.BigNum (one, zero) as BigNum
+import Cardano.Types.Coin (zero) as Coin
 import Contract.Config
   ( ContractParams
   , PrivatePaymentKeySource(PrivatePaymentKeyFile)
@@ -29,18 +37,22 @@ import Contract.Config
   , disabledSynchronizationParams
   , emptyHooks
   , mkBlockfrostBackendParams
+  , mkCtlBackendParams
   )
 import Contract.Monad (Contract, ContractEnv, mkContractEnv, runContractInEnv)
+import Contract.ProtocolParameters (getProtocolParameters)
 import Contract.Utxos (getUtxo)
 import Control.Monad.Error.Class (liftMaybe)
 import Control.Monad.Logger.Trans (LoggerT, runLoggerT)
-import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
+import Control.Monad.Reader (ReaderT, ask, asks, local, runReaderT)
 import Data.Log.Formatter.Pretty (prettyFormatter)
 import Data.Log.Message (Message)
 import Data.Maybe (Maybe(Just, Nothing), maybe)
+import Data.Newtype (modify, wrap)
 import Data.String (take, trim) as String
 import Data.Tuple (Tuple(Tuple))
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.UInt (UInt)
 import Effect (Effect)
 import Effect.AVar (AVar)
 import Effect.Aff (Aff, launchAff)
@@ -49,7 +61,12 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Effect.Exception (error, throw)
-import HydraSdk.Example.Minimal.Config (DelegateServerConfig)
+import Effect.Ref (Ref)
+import Effect.Ref (new) as Ref
+import HydraSdk.Example.Minimal.Config
+  ( DelegateServerConfig
+  , DelegateServerQueryBackend(Blockfrost, Kupmios)
+  )
 import HydraSdk.Example.Minimal.Contract.Collateral (getCollateral)
 import HydraSdk.Lib (modify) as AVar
 import HydraSdk.Types (HydraHeadStatus(HeadStatus_Unknown), HydraSnapshot, emptySnapshot)
@@ -74,6 +91,27 @@ runContractInApp contract =
   (liftAff <<< flip runContractInEnv contract)
     =<< asks _.contractEnv
 
+runL2ContractInApp :: forall a. Contract a -> AppM a
+runL2ContractInApp contract = do
+  { contractEnv } <- ask
+  liftAff $ runContractInEnv contractEnv do
+    pparams <- getProtocolParameters <#> modify \rec ->
+      rec
+        { txFeeFixed = Coin.zero
+        , txFeePerByte = (zero :: UInt)
+        , prices = wrap
+            { memPrice: wrap { numerator: BigNum.zero, denominator: BigNum.one }
+            , stepPrice: wrap { numerator: BigNum.zero, denominator: BigNum.one }
+            }
+        , coinsPerUtxoByte = Coin.zero
+        }
+    contract # local _
+      { ledgerConstants =
+          contractEnv.ledgerConstants
+            { pparams = pparams
+            }
+      }
+
 type AppLogger = Message -> ReaderT AppState Aff Unit
 
 appLogger :: AppLogger
@@ -89,6 +127,7 @@ type AppState =
   , commitUtxo :: Tuple TransactionInput TransactionOutput
   , headStatus :: AVar HydraHeadStatus
   , utxoSnapshot :: AVar HydraSnapshot
+  , depositTxId :: Ref (Maybe TransactionHash)
   }
 
 readHeadStatus :: AppM HydraHeadStatus
@@ -114,12 +153,14 @@ initApp config@{ hydraNodeStartupParams: { cardanoSigningKey }, commitOutRef } =
     resolveCommitOutRef oref
   headStatus <- AVar.new HeadStatus_Unknown
   utxoSnapshot <- AVar.new emptySnapshot
+  depositTxId <- liftEffect $ Ref.new Nothing
   pure
     { config
     , contractEnv
     , commitUtxo
     , headStatus
     , utxoSnapshot
+    , depositTxId
     }
   where
   resolveCommitOutRef
@@ -132,25 +173,32 @@ initApp config@{ hydraNodeStartupParams: { cardanoSigningKey }, commitOutRef } =
       )
 
   mkBackendParams :: Effect (NetworkId /\ ProviderBackendParams)
-  mkBackendParams = do
-    blockfrostApiKey <- String.trim <$> readTextFile UTF8 config.blockfrostApiKeyFile
-    let networkPrefix = String.take 7 blockfrostApiKey
-    networkId /\ blockfrostConfig <-
-      case networkPrefix of
-        "mainnet" ->
-          pure $ MainnetId /\ blockfrostPublicMainnetServerConfig
-        "preprod" ->
-          pure $ TestnetId /\ blockfrostPublicPreprodServerConfig
-        "preview" ->
-          pure $ TestnetId /\ blockfrostPublicPreviewServerConfig
-        _ ->
-          throw $ "mkBackendParams: unsupported network. Blockfrost API key prefix: "
-            <> networkPrefix
-    pure $ networkId /\ mkBlockfrostBackendParams
-      { blockfrostConfig
-      , blockfrostApiKey: Just blockfrostApiKey
-      , confirmTxDelay: defaultConfirmTxDelay
-      }
+  mkBackendParams =
+    case config.queryBackend of
+      Blockfrost { apiKeyFile } -> do
+        blockfrostApiKey <- String.trim <$> readTextFile UTF8 apiKeyFile
+        let networkPrefix = String.take 7 blockfrostApiKey
+        networkId /\ blockfrostConfig <-
+          case networkPrefix of
+            "mainnet" ->
+              pure $ MainnetId /\ blockfrostPublicMainnetServerConfig
+            "preprod" ->
+              pure $ TestnetId /\ blockfrostPublicPreprodServerConfig
+            "preview" ->
+              pure $ TestnetId /\ blockfrostPublicPreviewServerConfig
+            _ ->
+              throw $ "mkBackendParams: unsupported network. Blockfrost API key prefix: "
+                <> networkPrefix
+        pure $ networkId /\ mkBlockfrostBackendParams
+          { blockfrostConfig
+          , blockfrostApiKey: Just blockfrostApiKey
+          , confirmTxDelay: defaultConfirmTxDelay
+          }
+      Kupmios { network, kupoConfig, ogmiosConfig } ->
+        pure $ network /\ mkCtlBackendParams
+          { ogmiosConfig
+          , kupoConfig
+          }
 
   contractParams :: ProviderBackendParams -> NetworkId -> ContractParams
   contractParams backendParams networkId =

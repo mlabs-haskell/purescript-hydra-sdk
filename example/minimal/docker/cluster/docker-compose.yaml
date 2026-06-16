@@ -1,41 +1,41 @@
 services:
-  # cardano-node:
-    # image: ghcr.io/intersectmbo/cardano-node:10.5.3
-    # attach: false
-    # environment:
-      # - NETWORK=preprod
-    # volumes:
-      # - node-db:/data/db
-      # - node-ipc:/ipc
-    # restart: on-failure
-    # healthcheck:
-      # test: ["CMD-SHELL", "[ \"$(cardano-cli query tip --testnet-magic=1 --socket-path=/ipc/node.socket | tail -c 9 | head -c 5)\" == \"100.0\" ]"]
-      # interval: 10s
-      # retries: 8640
-    # logging:
-      # driver: "json-file"
-      # options:
-        # max-size: "200k"
-        # max-file: "10"
-
-  etcd-logger:
-    image: busybox
+  cardano-node:
+    image: ghcr.io/intersectmbo/cardano-node:11.0.1
     attach: false
-    command: tail -F /var/log/etcd/etcd.log
+    environment:
+      - NETWORK=preprod
     volumes:
-      - etcd-logs:/var/log/etcd
-    depends_on:
-      - delegate-node-a
-      - delegate-node-b
+      - node-db:/data/db
+      - node-ipc:/ipc
     restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$(cardano-cli query tip --testnet-magic=1 --socket-path=/ipc/node.socket | tail -c 9 | head -c 5)\" == \"100.0\" ]"]
+      interval: 10s
+      retries: 8640
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+
+  # etcd-logger:
+    # image: busybox
+    # attach: false
+    # command: tail -F /var/log/etcd/etcd.log
+    # volumes:
+      # - etcd-logs:/var/log/etcd
+    # depends_on:
+      # - delegate-node-a
+      # - delegate-node-b
+    # restart: on-failure
 
   delegate-node-a:
     build:
       context: "../../../.."
       dockerfile: "example/minimal/docker/node/Dockerfile"
-    # depends_on:
-      # cardano-node:
-        # condition: service_healthy
+    depends_on:
+      cardano-node:
+        condition: service_healthy
     command: "config.json"
     volumes:
       - etcd-logs:/var/log/etcd
@@ -56,9 +56,9 @@ services:
     build:
       context: "../../../.."
       dockerfile: "example/minimal/docker/node/Dockerfile"
-    # depends_on:
-      # cardano-node:
-        # condition: service_healthy
+    depends_on:
+      cardano-node:
+        condition: service_healthy
     command: "config.json"
     volumes:
       - etcd-logs:/var/log/etcd

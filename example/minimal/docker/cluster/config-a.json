@@ -8,18 +8,20 @@
     "hydraSigningKey": "keys/hydra-a.sk",
     "cardanoSigningKey": "keys/cardano-a.sk",
     "queryLayer": {
-      "tag": "Blockfrost",
-      "apiKeyFile": "keys/blockfrost.txt",
-      "queryTimeoutSec": null,
-      "retryTimeoutSec": null
+      "tag": "CardanoNode",
+      "nodeSocket": "node-ipc/node.socket",
+      "network": {
+        "tag": "Testnet",
+        "magic": 1
+      }
     },
     "pparams": "protocol-parameters.json",
     "hydraScripts": [
       "16f275a5338119d7f65fadaa495ec07541eb19524509f3c40f8b1b7854298e46"
     ],
     "contestPeriodSec": 60,
-    "depositPeriodSec": 120, 
-    "unsyncedPeriodSec": 180,
+    "depositPeriodSec": 600, 
+    "unsyncedPeriodSec": null,
     "peers": [
       {
         "hydraNodeAddress": "delegate-node-b:7002",
@@ -28,14 +30,16 @@
       }
     ],
     "etcd": {
-      "logLevel": "info",
-      "logOutputs": [
-        "/var/log/etcd/etcd.log"
-      ]
+      "logLevel": null,
+      "logOutputs": null
     }
   },
-  "blockfrostApiKeyFile": "keys/blockfrost.txt",
+  "queryBackend": {
+    "tag": "Blockfrost",
+    "apiKeyFile": "keys/blockfrost.txt"
+  },
   "logLevel": "trace",
   "ctlLogLevel": "warn",
-  "commitOutRef": null
+  "commitOutRef": null,
+  "isLeader": true
 }

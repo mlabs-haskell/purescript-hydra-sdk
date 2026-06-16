@@ -1,72 +1,4 @@
-module HydraSdk.Internal.Types.NodeApiMessage
-  ( CommandFailedMessage
-  , CommitFinalizedMessage
-  , CommitRecordedMessage
-  , DepositActivatedMessage
-  , DepositExpiredMessage
-  , GreetingsMessage
-  , HeadClosedMessage
-  , HeadContestedMessage
-  , HeadFinalizedMessage
-  , HeadOpenMessage
-  , HeadParameters
-  , HydraNodeApi_InMessage(..)
-  , HydraNodeApi_OutMessage
-      ( Init
-      , NewTx
-      , Close
-      , Contest
-      , Fanout
-      )
-  , IgnoredHeadInitMessage
-  , InvalidInputMessage
-  , NetworkConnMessage
-  , NetworkVersionMismatchMessage
-  , NewTxMessage
-  , PeerConnMessage
-  , PostChainTx
-      ( InitTx
-      , AbortTx
-      , CollectComTx
-      , IncrementTx
-      , DecrementTx
-      , CloseTx
-      , ContestTx
-      , FanoutTx
-      )
-  , PostTxError
-      ( NoSeedInput
-      , InvalidSeed
-      , InvalidHeadId
-      , CannotFindOwnInitial
-      , UnsupportedLegacyOutput
-      , InvalidStateToPost
-      , NotEnoughFuel
-      , NoFuelUTXOFound
-      , ScriptFailedInWallet
-      , InternalWalletError
-      , FailedToPostTx
-      , PlutusValidationFailed
-      , CommittedTooMuchADAForMainnet
-      , FailedToDraftTxNotInitializing
-      , FailedToConstructAbortTx
-      , FailedToConstructCloseTx
-      , FailedToConstructContestTx
-      , FailedToConstructCollectTx
-      , FailedToConstructDecrementTx
-      , FailedToConstructFanoutTx
-      )
-  , PostTxOnchainFailedMessage
-  , ReadyToFanoutMessage
-  , SeqTimestamp
-  , SnapshotConfirmedMessage
-  , SyncedStatusReportMessage
-  , TxInvalidMessage
-  , TxValidMessage
-  , hydraNodeApiInMessageCodec
-  , hydraNodeApiOutMessageCodec
-  , nextHeadStatus
-  ) where
+module HydraSdk.Internal.Types.NodeApiMessage where
 
 import Prelude
 
@@ -90,8 +22,7 @@ import HydraSdk.Internal.Lib.Codec
   )
 import HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
-      ( HeadStatus_Initializing
-      , HeadStatus_Open
+      ( HeadStatus_Open
       , HeadStatus_Closed
       , HeadStatus_FanoutPossible
       , HeadStatus_Final
@@ -115,31 +46,55 @@ import Record (merge) as Record
 ----------------------------------------------------------------------
 -- Incoming messages
 
+-- TODO: SnapshotSideLoaded, EventLogRotated, RejectedInputBecauseUnsynced, SideLoadSnapshotRejected, SyncedStatusReport
+
 -- | Represents incoming messages from the hydra-node API WebSocket server.
--- | Reference: https://github.com/cardano-scaling/hydra/blob/1ffe7c6b505e3f38b5546ae5e5b97de26bc70425/hydra-node/src/Hydra/API/ServerOutput.hs#L76-L141
+-- | Reference:
+-- | https://github.com/cardano-scaling/hydra/blob/25b8bd2b54cdc28aed491346dca383f3c8001077/hydra-node/src/Hydra/API/ServerOutput.hs
 data HydraNodeApi_InMessage
   = Greetings GreetingsMessage
-  | HeadIsOpen HeadOpenMessage
-  | CommitRecorded CommitRecordedMessage
-  | DepositActivated DepositActivatedMessage
-  | DepositExpired DepositExpiredMessage
-  | CommitFinalized CommitFinalizedMessage
+
+  -- network
+  | NetworkConnected NetworkConnMessage
+  | NetworkDisconnected NetworkConnMessage
+  | NetworkVersionMismatch NetworkVersionMismatchMessage
+  | PeerConnected PeerConnMessage
+  | PeerDisconnected PeerConnMessage
+
+  -- node sync
   | SyncedStatusReport SyncedStatusReportMessage
   | NodeUnsynced
   | NodeSynced
 
-  | PeerConnected PeerConnMessage
-  | PeerDisconnected PeerConnMessage
-  | NetworkConnected NetworkConnMessage
-  | NetworkDisconnected NetworkConnMessage
-  | NetworkVersionMismatch NetworkVersionMismatchMessage
+  -- states
+  | HeadIsOpen HeadOpenMessage
   | HeadIsClosed HeadClosedMessage
   | HeadIsContested HeadContestedMessage
   | ReadyToFanout ReadyToFanoutMessage
   | HeadIsFinalized HeadFinalizedMessage
+
+  -- commits
+  | CommitRecorded CommitRecordedMessage
+  | DepositExpired DepositExpiredMessage
+  | CommitRecovered CommitRecoveredMessage
+  | DepositActivated DepositActivatedMessage
+  | CommitApproved CommitApprovedMessage
+  | CommitFinalized CommitFinalizedMessage
+
+  -- decommits
+  | DecommitRequested DecommitRequestedMessage
+  | DecommitInvalid DecommitInvalidMessage
+  | DecommitApproved DecommitApprovedMessage
+  | DecommitFinalized DecommitFinalizedMessage
+
+  -- transactions
   | TxValid TxValidMessage
   | TxInvalid TxInvalidMessage
+
+  -- snapshots
   | SnapshotConfirmed SnapshotConfirmedMessage
+
+  -- errors
   | InvalidInput InvalidInputMessage
   | PostTxOnChainFailed PostTxOnchainFailedMessage
   | CommandFailed CommandFailedMessage
@@ -155,16 +110,29 @@ hydraNodeApiInMessageCodec :: CA.JsonCodec HydraNodeApi_InMessage
 hydraNodeApiInMessageCodec =
   CAS.sumFlat "HydraNodeApi_InMessage"
     { "Greetings": greetingsMessageCodec
-    , "PeerConnected": peerConnMessageCodec
-    , "PeerDisconnected": peerConnMessageCodec
     , "NetworkConnected": networkConnMessageCodec
     , "NetworkDisconnected": networkConnMessageCodec
     , "NetworkVersionMismatch": networkVersionMismatchMessageCodec
+    , "PeerConnected": peerConnMessageCodec
+    , "PeerDisconnected": peerConnMessageCodec
+    , "SyncedStatusReport": syncedStatusReportMessageCodec
+    , "NodeUnsynced": unit
+    , "NodeSynced": unit
     , "HeadIsOpen": headOpenMessageCodec
     , "HeadIsClosed": headClosedMessageCodec
     , "HeadIsContested": headContestedMessageCodec
     , "ReadyToFanout": readyToFanoutMessageCodec
     , "HeadIsFinalized": headFinalizedMessageCodec
+    , "CommitRecorded": commitRecordedMessageCodec
+    , "DepositExpired": depositExpiredMessageCodec
+    , "CommitRecovered": commitRecoveredMessageCodec
+    , "DepositActivated": depositActivatedMessageCodec
+    , "CommitApproved": commitApprovedMessageCodec
+    , "CommitFinalized": commitFinalizedMessageCodec
+    , "DecommitRequested": decommitRequestedMessageCodec
+    , "DecommitInvalid": decommitInvalidMessageCodec
+    , "DecommitApproved": decommitApprovedMessageCodec
+    , "DecommitFinalized": decommitFinalizedMessageCodec
     , "TxValid": txValidMessageCodec
     , "TxInvalid": txInvalidMessageCodec
     , "SnapshotConfirmed": snapshotConfirmedMessageCodec
@@ -172,13 +140,6 @@ hydraNodeApiInMessageCodec =
     , "PostTxOnChainFailed": postTxOnchainFailedMessageCodec
     , "CommandFailed": commandFailedMessageCodec
     , "IgnoredHeadInitializing": ignoredHeadInitMessageCodec
-    , "NodeUnsynced": unit
-    , "NodeSynced": unit
-    , "CommitRecorded": commitRecordedMessageCodec
-    , "CommitFinalized": commitFinalizedMessageCodec
-    , "DepositActivated": depositActivatedMessageCodec
-    , "DepositExpired": depositExpiredMessageCodec
-    , "SyncedStatusReport": syncedStatusReportMessageCodec
     }
 
 -- | Determines the new Head status based on the incoming hydra-node API message.
@@ -199,22 +160,22 @@ type SeqTimestamp (r :: Row Type) = Record
   | r
   )
 
-recCodecUnion
-  :: forall c0 c1 c' c r rl
-   . Union c0 c1 c'
-  => Nub c' c
-  => RowToList c rl
-  => CAR.RowListCodec rl c r
-  => Record c0
-  -> Record c1
-  -> CA.JPropCodec (Record r)
-recCodecUnion rec0 = CAR.record <<< Record.merge rec0
-
 seqTimestampCodec =
   recCodecUnion
     { seq: CAR.optional CA.int
     , timestamp: CAR.optional dateTimeCodec
     }
+  where
+  recCodecUnion
+    :: forall c0 c1 c' c r rl
+     . Union c0 c1 c'
+    => Nub c' c
+    => RowToList c rl
+    => CAR.RowListCodec rl c r
+    => Record c0
+    -> Record c1
+    -> CA.JPropCodec (Record r)
+  recCodecUnion rec0 = CAR.record <<< Record.merge rec0
 
 ----------------------------------------------------------------------
 -- Greetings
@@ -226,6 +187,8 @@ seqTimestampCodec =
 -- | embodies. This message produced whenever the hydra-node starts
 -- | and clients should take consequence of seeing this. For example,
 -- | we can assume no peers connected when we see 'Greetings'.
+-- | Reference:
+-- | https://github.com/cardano-scaling/hydra/blob/25b8bd2b54cdc28aed491346dca383f3c8001077/hydra-node/src/Hydra/API/ServerOutput.hs#L93-L103
 type GreetingsMessage =
   { chainSyncedStatus :: SyncStatus
   , headStatus :: HydraHeadStatus
@@ -331,6 +294,23 @@ commitRecordedMessageCodec =
     }
 
 ----------------------------------------------------------------------
+-- CommitRecoveredMessage
+
+type CommitRecoveredMessage =
+  { headId :: String -- ScriptHash
+  , recoveredTxId :: TransactionHash
+  , recoveredUTxO :: HydraUtxoMap
+  }
+
+commitRecoveredMessageCodec :: CA.JPropCodec CommitRecoveredMessage
+commitRecoveredMessageCodec =
+  CAR.record
+    { headId: CA.string
+    , recoveredTxId: txHashCodec
+    , recoveredUTxO: hydraUtxoMapCodec
+    }
+
+----------------------------------------------------------------------
 -- DepositActivated
 
 type DepositActivatedMessage = SeqTimestamp
@@ -369,6 +349,21 @@ depositExpiredMessageCodec =
     }
 
 ----------------------------------------------------------------------
+-- CommitApproved
+
+type CommitApprovedMessage =
+  { headId :: String -- ScriptHash
+  , utxoToCommit :: HydraUtxoMap
+  }
+
+commitApprovedMessageCodec :: CA.JPropCodec CommitApprovedMessage
+commitApprovedMessageCodec =
+  CAR.record
+    { headId: CA.string
+    , utxoToCommit: hydraUtxoMapCodec
+    }
+
+----------------------------------------------------------------------
 -- CommitFinalized
 
 type CommitFinalizedMessage = SeqTimestamp
@@ -381,6 +376,72 @@ commitFinalizedMessageCodec =
   seqTimestampCodec
     { headId: CA.string
     , depositTxId: txHashCodec
+    }
+
+----------------------------------------------------------------------
+-- DecommitRequested
+
+type DecommitRequestedMessage =
+  { headId :: String -- ScriptHash
+  , decommitTx :: HydraTx
+  , utxoToDecommit :: HydraUtxoMap
+  }
+
+decommitRequestedMessageCodec :: CA.JPropCodec DecommitRequestedMessage
+decommitRequestedMessageCodec =
+  CAR.record
+    { headId: CA.string
+    , decommitTx: hydraTxCodec
+    , utxoToDecommit: hydraUtxoMapCodec
+    }
+
+----------------------------------------------------------------------
+-- DecommitInvalid
+
+-- TODO: decommitInvalidReason
+
+type DecommitInvalidMessage =
+  { headId :: String -- ScriptHash
+  , decommitTx :: HydraTx
+  }
+
+decommitInvalidMessageCodec :: CA.JPropCodec DecommitInvalidMessage
+decommitInvalidMessageCodec =
+  CAR.record
+    { headId: CA.string
+    , decommitTx: hydraTxCodec
+    }
+
+----------------------------------------------------------------------
+-- DecommitApprovedMessage
+
+type DecommitApprovedMessage =
+  { headId :: String -- ScriptHash
+  , decommitTxId :: TransactionHash
+  , utxoToDecommit :: HydraUtxoMap
+  }
+
+decommitApprovedMessageCodec :: CA.JPropCodec DecommitApprovedMessage
+decommitApprovedMessageCodec =
+  CAR.record
+    { headId: CA.string
+    , decommitTxId: txHashCodec
+    , utxoToDecommit: hydraUtxoMapCodec
+    }
+
+----------------------------------------------------------------------
+-- DecommitFinalizedMessage
+
+type DecommitFinalizedMessage =
+  { headId :: String -- ScriptHash
+  , distributedUTxO :: HydraUtxoMap
+  }
+
+decommitFinalizedMessageCodec :: CA.JPropCodec DecommitFinalizedMessage
+decommitFinalizedMessageCodec =
+  CAR.record
+    { headId: CA.string
+    , distributedUTxO: hydraUtxoMapCodec
     }
 
 ----------------------------------------------------------------------
@@ -464,14 +525,14 @@ readyToFanoutMessageCodec =
 -- | is now over.
 type HeadFinalizedMessage = SeqTimestamp
   ( headId :: String -- ScriptHash
-  , utxo :: HydraUtxoMap
+  , finalizedUTxO :: HydraUtxoMap
   )
 
 headFinalizedMessageCodec :: CA.JPropCodec HeadFinalizedMessage
 headFinalizedMessageCodec =
   seqTimestampCodec
     { headId: CA.string -- scriptHashCodec
-    , utxo: hydraUtxoMapCodec
+    , finalizedUTxO: hydraUtxoMapCodec
     }
 
 ----------------------------------------------------------------------
@@ -864,10 +925,16 @@ postTxErrorCodec =
 ----------------------------------------------------------------------
 -- Outcoming messages
 
+-- TODO: SideLoadSnapshot, SafeClose
+
 -- | Represents messages that can be sent to the hydra-node API
 -- | WebSocket server.
+-- | Reference:
+-- | https://github.com/cardano-scaling/hydra/blob/25b8bd2b54cdc28aed491346dca383f3c8001077/hydra-node/src/Hydra/API/ClientInput.hs
 data HydraNodeApi_OutMessage
   = Init
+  | Recover RecoverMessage
+  | Decommit DecommitMessage
   | NewTx NewTxMessage
   | Close
   | Contest
@@ -883,11 +950,32 @@ hydraNodeApiOutMessageCodec :: CA.JsonCodec HydraNodeApi_OutMessage
 hydraNodeApiOutMessageCodec =
   CAS.sumFlat "HydraNodeApi_OutMessage"
     { "Init": unit
-    -- , "Abort": unit
+    , "Recover": recoverMessageCodec
+    , "Decommit": decommitMessageCodec
     , "NewTx": newTxMessageCodec
     , "Close": unit
     , "Contest": unit
     , "Fanout": unit
+    }
+
+type RecoverMessage =
+  { recoverTxId :: TransactionHash
+  }
+
+recoverMessageCodec :: CA.JPropCodec RecoverMessage
+recoverMessageCodec =
+  CAR.record
+    { recoverTxId: txHashCodec
+    }
+
+type DecommitMessage =
+  { decommitTx :: HydraTx
+  }
+
+decommitMessageCodec :: CA.JPropCodec DecommitMessage
+decommitMessageCodec =
+  CAR.record
+    { decommitTx: hydraTxCodec
     }
 
 type NewTxMessage =
@@ -899,4 +987,3 @@ newTxMessageCodec =
   CAR.record
     { transaction: hydraTxCodec
     }
-

@@ -31,7 +31,6 @@ import HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
       ( HeadStatus_Unknown
       , HeadStatus_Idle
-      , HeadStatus_Initializing
       , HeadStatus_Open
       , HeadStatus_Closed
       , HeadStatus_FanoutPossible

@@ -6,7 +6,6 @@
   , "arrays"
   , "avar"
   , "bytearrays"
-  , "cardano-key-wallet"
   , "cardano-provider"
   , "cardano-transaction-lib"
   , "cardano-types"
@@ -25,11 +24,9 @@
   , "node-buffer"
   , "node-child-process"
   , "node-fs"
-  , "node-fs-aff"
   , "node-path"
   , "node-process"
   , "ordered-collections"
-  , "parallel"
   , "posix-types"
   , "prelude"
   , "profunctor-lenses"
@@ -40,7 +37,6 @@
   , "transformers"
   , "tuples"
   , "uint"
-  , "uuid"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "app/**/*.purs", "test/**/*.purs" ]

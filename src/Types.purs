@@ -10,6 +10,7 @@ module HydraSdk.Types
   , module ExportNodeApiMessage
   , module ExportQueryLayer
   , module ExportSnapshot
+  , module ExportSyncStatus
   , module ExportTx
   , module ExportUtxoMap
   ) where
@@ -30,7 +31,6 @@ import HydraSdk.Internal.Types.HeadStatus
   ( HydraHeadStatus
       ( HeadStatus_Unknown
       , HeadStatus_Idle
-      , HeadStatus_Initializing
       , HeadStatus_Open
       , HeadStatus_Closed
       , HeadStatus_FanoutPossible
@@ -62,95 +62,7 @@ import HydraSdk.Internal.Types.Network
   , networkToNetworkId
   ) as ExportNetwork
 
-import HydraSdk.Internal.Types.NodeApiMessage
-  ( CommandFailedMessage
-  , CommittedMessage
-  , GreetingsMessage
-  , HeadAbortedMessage
-  , HeadClosedMessage
-  , HeadContestedMessage
-  , HeadInitMessage
-  , HeadFinalizedMessage
-  , HeadOpenMessage
-  , HydraNodeApi_InMessage
-      ( Greetings
-      , PeerConnected
-      , PeerDisconnected
-      , NetworkConnected
-      , NetworkDisconnected
-      , NetworkVersionMismatch
-      , HeadIsInitializing
-      , Committed
-      , HeadIsOpen
-      , HeadIsClosed
-      , HeadIsContested
-      , ReadyToFanout
-      , HeadIsAborted
-      , HeadIsFinalized
-      , TxValid
-      , TxInvalid
-      , SnapshotConfirmed
-      , InvalidInput
-      , PostTxOnChainFailed
-      , CommandFailed
-      , IgnoredHeadInitializing
-      )
-  , HydraNodeApi_OutMessage
-      ( Init
-      , Abort
-      , NewTx
-      , Close
-      , Contest
-      , Fanout
-      )
-  , IgnoredHeadInitMessage
-  , InvalidInputMessage
-  , NetworkConnMessage
-  , NetworkVersionMismatchMessage
-  , NewTxMessage
-  , PeerConnMessage
-  , PostChainTx
-      ( InitTx
-      , AbortTx
-      , CollectComTx
-      , IncrementTx
-      , DecrementTx
-      , CloseTx
-      , ContestTx
-      , FanoutTx
-      )
-  , PostTxError
-      ( NoSeedInput
-      , InvalidSeed
-      , InvalidHeadId
-      , CannotFindOwnInitial
-      , UnsupportedLegacyOutput
-      , InvalidStateToPost
-      , NotEnoughFuel
-      , NoFuelUTXOFound
-      , ScriptFailedInWallet
-      , InternalWalletError
-      , FailedToPostTx
-      , PlutusValidationFailed
-      , CommittedTooMuchADAForMainnet
-      , FailedToDraftTxNotInitializing
-      , FailedToConstructAbortTx
-      , FailedToConstructCloseTx
-      , FailedToConstructContestTx
-      , FailedToConstructCollectTx
-      , FailedToConstructDecrementTx
-      , FailedToConstructFanoutTx
-      )
-  , PostTxOnchainFailedMessage
-  , ReadyToFanoutMessage
-  , SeqTimestamp
-  , SnapshotConfirmedMessage
-  , TxInvalidMessage
-  , TxValidMessage
-  , hydraNodeApiInMessageCodec
-  , hydraNodeApiOutMessageCodec
-  , nextHeadStatus
-  ) as ExportNodeApiMessage
+import HydraSdk.Internal.Types.NodeApiMessage as ExportNodeApiMessage
 
 import HydraSdk.Internal.Types.QueryLayer
   ( QueryLayer(CardanoNode, Blockfrost)
@@ -164,6 +76,11 @@ import HydraSdk.Internal.Types.Snapshot
   , emptySnapshot
   , hydraSnapshotCodec
   ) as ExportSnapshot
+
+import HydraSdk.Internal.Types.SyncStatus
+  ( SyncStatus(InSync, CatchingUp)
+  , syncStatusCodec
+  ) as ExportSyncStatus
 
 import HydraSdk.Internal.Types.Tx
   ( HydraTx

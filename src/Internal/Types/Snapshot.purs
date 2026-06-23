@@ -8,16 +8,15 @@ module HydraSdk.Internal.Types.Snapshot
 
 import Prelude
 
-import Aeson (class DecodeAeson, class EncodeAeson, decodeAeson, encodeAeson, getField)
-import Control.Alt ((<|>))
-import Data.Bifunctor (lmap)
-import Data.Codec.Argonaut (JsonCodec, array, decode, encode, object, string) as CA
+import Data.Codec.Argonaut (JsonCodec, array, int, object, string) as CA
+import Data.Codec.Argonaut.Compat (maybe) as CACompat
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Codec.Argonaut.Sum (sumFlat) as CAS
 import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe(Nothing))
 import Data.Newtype (class Newtype, wrap)
+import Data.Profunctor (wrapIso)
 import Data.Show.Generic (genericShow)
-import HydraSdk.Internal.Lib.Codec (aesonCodec, fromCaJsonDecodeError)
 import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
 import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
 
@@ -56,9 +55,11 @@ confirmedSnapshotCodec =
     }
 
 newtype HydraSnapshot = HydraSnapshot
-  { snapshotNumber :: Int
+  { number :: Int
   , utxo :: HydraUtxoMap
   , confirmed :: Array HydraTx
+  , utxoToCommit :: Maybe HydraUtxoMap
+  , utxoToDecommit :: Maybe HydraUtxoMap
   }
 
 derive instance Generic HydraSnapshot _
@@ -68,6 +69,7 @@ derive instance Eq HydraSnapshot
 instance Show HydraSnapshot where
   show = genericShow
 
+{-
 instance DecodeAeson HydraSnapshot where
   decodeAeson aeson = do
     obj <- decodeAeson aeson
@@ -90,14 +92,25 @@ instance EncodeAeson HydraSnapshot where
       , utxo: CA.encode hydraUtxoMapCodec snapshot.utxo
       , confirmed: CA.encode (CA.array hydraTxCodec) snapshot.confirmed
       }
+-}
 
 hydraSnapshotCodec :: CA.JsonCodec HydraSnapshot
-hydraSnapshotCodec = aesonCodec "HydraSnapshot"
+hydraSnapshotCodec = --aesonCodec "HydraSnapshot"
+
+  wrapIso HydraSnapshot $ CA.object "HydraSnapshot" $ CAR.record
+    { number: CA.int
+    , utxo: hydraUtxoMapCodec
+    , confirmed: CA.array hydraTxCodec
+    , utxoToCommit: CACompat.maybe hydraUtxoMapCodec
+    , utxoToDecommit: CACompat.maybe hydraUtxoMapCodec
+    }
 
 emptySnapshot :: HydraSnapshot
 emptySnapshot = wrap
-  { snapshotNumber: zero
+  { number: zero
   , utxo: mempty
   , confirmed: mempty
+  , utxoToCommit: Nothing
+  , utxoToDecommit: Nothing
   }
 

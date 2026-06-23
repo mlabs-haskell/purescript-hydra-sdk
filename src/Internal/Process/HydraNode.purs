@@ -15,21 +15,29 @@ import Prelude
 import Cardano.AsCbor (encodeCbor)
 import Cardano.Types (TransactionHash)
 import Control.Error.Util (bool)
-import Data.Array (concat, singleton) as Array
+import Data.Array (catMaybes, concat, singleton) as Array
+import Data.Bitraversable (rtraverse)
 import Data.Codec.Argonaut (JsonCodec, JPropCodec, array, int, object, string) as CA
 import Data.Codec.Argonaut.Compat (maybe) as CA
 import Data.Codec.Argonaut.Record (record) as CAR
 import Data.Foldable (foldMap)
 import Data.Int (decimal, toStringAs) as Int
-import Data.Maybe (Maybe(Nothing), isNothing, maybe)
+import Data.Maybe (Maybe(Just, Nothing), isNothing, maybe)
 import Data.String (Pattern(Pattern))
 import Data.String (contains, joinWith) as String
 import Data.Traversable (for_, traverse_)
+import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import Effect.AVar (empty, tryPut) as AVar
 import Effect.Class (class MonadEffect, liftEffect)
+import Foreign.Object (fromFoldable, union) as Object
 import HydraSdk.Internal.Lib.Codec (txHashCodec, unionRecordCodecs)
 import HydraSdk.Internal.Lib.Misc (cborBytesToHex)
+import HydraSdk.Internal.Types.EtcdLogLevel
+  ( EtcdLogLevel
+  , etcdLogLevelCodec
+  , printEtcdLogLevel
+  )
 import HydraSdk.Internal.Types.HostPort
   ( HostPort
   , hostPortStringCodec
@@ -42,9 +50,17 @@ import HydraSdk.Internal.Types.QueryLayer
   ( QueryLayer(CardanoNode, Blockfrost)
   , queryLayerCodec
   )
-import Node.ChildProcess (ChildProcess, defaultSpawnOptions, spawn, stderr, stdout)
+import Node.ChildProcess
+  ( ChildProcess
+  , StdIOBehaviour(Pipe, Ignore)
+  , defaultSpawnOptions
+  , spawn
+  , stderr
+  , stdout
+  )
 import Node.Encoding (Encoding(UTF8)) as Encoding
 import Node.Path (FilePath)
+import Node.Process (getEnv)
 import Node.Stream (onDataString)
 import Prim.Row (class Union) as Row
 import Prim.RowList (RowList)
@@ -63,8 +79,14 @@ type HydraNodeStartupParams (peerExtra :: Row Type) =
   , queryLayer :: QueryLayer
   , pparams :: FilePath
   , hydraScripts :: Array TransactionHash
-  , contestPeriodSec :: Int
+  , contestPeriodSec :: Maybe Int
+  , depositPeriodSec :: Maybe Int
+  , unsyncedPeriodSec :: Maybe Int
   , peers :: Array (Record (HydraHeadPeer peerExtra))
+  , etcd ::
+      { logLevel :: Maybe EtcdLogLevel
+      , logOutputs :: Maybe (Array String)
+      }
   }
 
 -- | Bidirectional JSON codec for `HydraNodeStartupParams`.
@@ -87,8 +109,15 @@ hydraNodeStartupParamsCodec peerExtraCodec =
     , queryLayer: queryLayerCodec
     , pparams: CA.string
     , hydraScripts: CA.array txHashCodec
-    , contestPeriodSec: CA.int
+    , contestPeriodSec: CA.maybe CA.int
+    , depositPeriodSec: CA.maybe CA.int
+    , unsyncedPeriodSec: CA.maybe CA.int
     , peers: CA.array $ hydraHeadPeerCodec peerExtraCodec
+    , etcd:
+        CA.object "HydraNodeStartupParams:etcd" $ CAR.record
+          { logLevel: CA.maybe etcdLogLevelCodec
+          , logOutputs: CA.maybe $ CA.array CA.string
+          }
     }
 
 -- | Configuration parameters for a single Hydra Head peer. When setting up a
@@ -149,7 +178,22 @@ spawnHydraNode
   -> HydraNodeHandlers
   -> m ChildProcess
 spawnHydraNode params handlers = liftEffect do
-  hydraNodeProcess <- spawn "hydra-node" hydraNodeArgs defaultSpawnOptions
+  env <- getEnv
+  hydraNodeProcess <- spawn "hydra-node" hydraNodeArgs $ defaultSpawnOptions
+    { stdio =
+        [ Just Ignore
+        , Just Pipe
+        , Just Pipe
+        ]
+    , env =
+        Just $ flip Object.union env $ Object.fromFoldable $ Array.catMaybes
+          ( rtraverse identity <$>
+              -- https://etcd.io/docs/v3.4/op-guide/configuration
+              [ "ETCD_LOG_LEVEL" /\ (printEtcdLogLevel <$> params.etcd.logLevel)
+              , "ETCD_LOG_OUTPUTS" /\ (String.joinWith "," <$> params.etcd.logOutputs)
+              ]
+          )
+    }
 
   for_ handlers.stderrHandler \stderrHandler ->
     onDataString (stderr hydraNodeProcess) Encoding.UTF8 \str ->
@@ -221,6 +265,10 @@ spawnHydraNode params handlers = liftEffect do
       , option "ledger-protocol-parameters" params.pparams
       , option "hydra-scripts-tx-id" $
           String.joinWith "," (cborBytesToHex <<< encodeCbor <$> params.hydraScripts)
-      , option "contestation-period" $
-          Int.toStringAs Int.decimal params.contestPeriodSec <> "s"
+      , optionMaybe "contestation-period" $ toSeconds <$> params.contestPeriodSec
+      , optionMaybe "deposit-period" $ toSeconds <$> params.depositPeriodSec
+      , optionMaybe "unsynced-period" $ toSeconds <$> params.unsyncedPeriodSec
       ]
+
+  toSeconds :: Int -> String
+  toSeconds x = Int.toStringAs Int.decimal x <> "s"

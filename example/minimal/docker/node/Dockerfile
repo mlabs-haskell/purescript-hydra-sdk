@@ -11,9 +11,9 @@ WORKDIR example/minimal
 RUN npm install -g purescript@0.15.8
 RUN npm install -g spago@0.21.0
 
-ARG HYDRA_VERSION=1.2.0
-RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/${HYDRA_VERSION}/hydra-x86_linux-${HYDRA_VERSION}.zip
-RUN unzip -d /usr/local/bin/ hydra-x86_linux-${HYDRA_VERSION}.zip
+ARG HYDRA_VERSION=2.2.0
+RUN curl -LO https://github.com/input-output-hk/hydra/releases/download/${HYDRA_VERSION}/hydra-x86_64-linux-${HYDRA_VERSION}.zip
+RUN unzip -d /usr/local/bin/ hydra-x86_64-linux-${HYDRA_VERSION}.zip
 RUN chmod +x /usr/local/bin/hydra-node
 
 COPY example/minimal/package.json example/minimal/package-lock.json .
@@ -27,7 +27,6 @@ RUN spago install
 COPY example/minimal/src src
 COPY example/minimal/app app
 COPY example/minimal/protocol-parameters.json .
-COPY example/minimal/blockfrost.txt .
 RUN spago build
 
 ENTRYPOINT [ "spago", "-q", "run", "--main", "HydraSdk.Example.Minimal.Main", "--exec-args"]

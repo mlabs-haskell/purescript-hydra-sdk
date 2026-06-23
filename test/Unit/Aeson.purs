@@ -64,4 +64,5 @@ ignoredTestcases =
   [ "InvalidInput"
   , "PostTxOnChainFailed"
   , "CommandFailed"
+  , "SyncedStatusReport"
   ]

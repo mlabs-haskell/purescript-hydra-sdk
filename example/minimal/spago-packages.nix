@@ -223,11 +223,11 @@ let
 
     "cardano-blockfrost-provider" = pkgs.stdenv.mkDerivation {
         name = "cardano-blockfrost-provider";
-        version = "v2.1.0";
+        version = "v2.2.0";
         src = pkgs.fetchgit {
           url = "https://github.com/mlabs-haskell/purescript-cardano-blockfrost-provider";
-          rev = "f501638cdf4a7a1f1c5d30dafd7369ac31d31024";
-          sha256 = "1msdagzdlalq31ph0gmkl2fm5sngw4d8s6i6vp5fj4grwmxzbz8m";
+          rev = "e8252b45adb34b3d805e5a2b9a8193db40246dea";
+          sha256 = "0wmrjx15hxmqyxaiczmiwnwldy0k87mvpyfxap191r5c66b13w45";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -283,11 +283,11 @@ let
 
     "cardano-kupmios-provider" = pkgs.stdenv.mkDerivation {
         name = "cardano-kupmios-provider";
-        version = "v2.1.0";
+        version = "v3.0.0";
         src = pkgs.fetchgit {
           url = "https://github.com/mlabs-haskell/purescript-cardano-kupmios-provider";
-          rev = "6ba7f96e0bc6b3633d930780f5c61bb122d90109";
-          sha256 = "1376zxnk5mshvzmanf3czrsm7ps4bm49kwnwwzxq492zjl5p5pja";
+          rev = "89a2a5ff52cebc72365a1aab570d6840acacac00";
+          sha256 = "1jc6yjrh8fjax40s8kd3n7ppz28yr5hdlm1r7yx3bffqil6xnq6n";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -367,11 +367,11 @@ let
 
     "cardano-transaction-lib" = pkgs.stdenv.mkDerivation {
         name = "cardano-transaction-lib";
-        version = "539385f4e4572dabbccff992802d1490f3106bf8";
+        version = "723052ce847c0fd9625243cd188af035b8a91b87";
         src = pkgs.fetchgit {
           url = "https://github.com/Plutonomicon/cardano-transaction-lib.git";
-          rev = "539385f4e4572dabbccff992802d1490f3106bf8";
-          sha256 = "16x3a4nsmy36wcnxhshpl3yp0jfjq4ldgpjicplyc5mv0ip6kydg";
+          rev = "723052ce847c0fd9625243cd188af035b8a91b87";
+          sha256 = "0d0wa837ybk4k4zdw5li4xs4ksabmjxk31wkgqyvraram77dssal";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -492,6 +492,18 @@ let
           url = "https://github.com/errfrom/purescript-codec-argonaut.git";
           rev = "59996776e733a1e0f1daf085f153b2cca8527907";
           sha256 = "0kyyq424hqd2a9611z0mrshf7x918xivzsp8b9djdzmdii002cbj";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
+    "concurrent-queues" = pkgs.stdenv.mkDerivation {
+        name = "concurrent-queues";
+        version = "v3.0.0";
+        src = pkgs.fetchgit {
+          url = "https://github.com/purescript-contrib/purescript-concurrent-queues.git";
+          rev = "905a0cb902dec070fa621819455363660de289c4";
+          sha256 = "0wr9fkdf23mam4ip7nwdm1i7qy0l1lysyfkffbqj07dvrgpkzd0f";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -828,18 +840,6 @@ let
           url = "https://github.com/purescript/purescript-gen.git";
           rev = "9fbcc2a1261c32e30d79c5418edef4d96fe76931";
           sha256 = "0kajzcp9a8dmqvb3ga27hlf18m2smbp98a0bmzzb9vv156ckw0b4";
-        };
-        phases = "installPhase";
-        installPhase = "ln -s $src $out";
-      };
-
-    "heterogeneous" = pkgs.stdenv.mkDerivation {
-        name = "heterogeneous";
-        version = "v0.6.0";
-        src = pkgs.fetchgit {
-          url = "https://github.com/natefaubion/purescript-heterogeneous.git";
-          rev = "5b7542bdd9547c5aef95b8878f103f0ce4ee1383";
-          sha256 = "0ff1wjq2ayhy67ydggbb2qlzbhvmv1m1z8dcp48p9zhxiq9fpfsz";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";
@@ -1550,6 +1550,18 @@ let
           url = "https://github.com/purescript/purescript-record.git";
           rev = "c89cd1ada6b636692571fc374196b1c39c4c9f70";
           sha256 = "1g7s2h1as5cz824wpm0jhjprrh66shha5i4gq37q73yw0s5p2ahm";
+        };
+        phases = "installPhase";
+        installPhase = "ln -s $src $out";
+      };
+
+    "record-extra" = pkgs.stdenv.mkDerivation {
+        name = "record-extra";
+        version = "v5.0.1";
+        src = pkgs.fetchgit {
+          url = "https://github.com/justinwoo/purescript-record-extra.git";
+          rev = "a9a4b8201d154513017048fc41efa0eefa48fba2";
+          sha256 = "0190igayc2ghzjg1ggwl0dv0b2b7sg16n5dm9fyi39ygp48fvshp";
         };
         phases = "installPhase";
         installPhase = "ln -s $src $out";

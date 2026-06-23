@@ -11,7 +11,7 @@ module HydraSdk.Internal.NodeApi.WebSocket
 
 import Prelude
 
-import Cardano.Types (Transaction)
+import Cardano.Types (Transaction, TransactionHash)
 import Control.Monad.Logger.Class (class MonadLogger)
 import Control.Monad.Rec.Class (class MonadRec)
 import Data.Either (Either(Right))
@@ -25,7 +25,7 @@ import HydraSdk.Internal.Lib.WebSocket (WebSocket, WebSocketUrl, mkWebSocket)
 import HydraSdk.Internal.Types.HeadStatus (HydraHeadStatus(HeadStatus_Closed), printHeadStatus)
 import HydraSdk.Internal.Types.NodeApiMessage
   ( HydraNodeApi_InMessage
-  , HydraNodeApi_OutMessage(Init, Abort, NewTx, Close, Contest, Fanout)
+  , HydraNodeApi_OutMessage(Init, Recover, Decommit, NewTx, Close, Contest, Fanout)
   , hydraNodeApiInMessageCodec
   , hydraNodeApiOutMessageCodec
   , nextHeadStatus
@@ -37,7 +37,8 @@ import HydraSdk.Internal.Types.Tx (mkHydraTx)
 type HydraNodeApiWebSocket (m :: Type -> Type) =
   { baseWs :: WebSocket m HydraNodeApi_InMessage HydraNodeApi_OutMessage
   , initHead :: Effect Unit
-  , abortHead :: Effect Unit
+  , recoverDeposit :: TransactionHash -> Effect Unit
+  , decommit :: Transaction -> Effect Unit
   , submitTxL2 :: Transaction -> Effect Unit
   , closeHead :: Effect Unit
   , challengeSnapshot :: Effect Unit
@@ -131,7 +132,8 @@ mkHydraNodeApiWebSocket { url, handlers, runM, txRetryStrategies } = liftEffect 
     hydraNodeApiWs =
       { baseWs: ws
       , initHead: ws.send Init
-      , abortHead: ws.send Abort
+      , recoverDeposit: ws.send <<< Recover <<< { recoverTxId: _ }
+      , decommit: ws.send <<< Decommit <<< { decommitTx: _ } <<< mkHydraTx
       , submitTxL2: ws.send <<< NewTx <<< { transaction: _ } <<< mkHydraTx
       , closeHead:
           case txRetryStrategies.close of

@@ -1,6 +1,7 @@
 services:
   cardano-node:
-    image: ghcr.io/intersectmbo/cardano-node:10.5.3
+    image: ghcr.io/intersectmbo/cardano-node:11.0.1
+    attach: false
     environment:
       - NETWORK=preprod
     volumes:
@@ -17,6 +18,17 @@ services:
         max-size: "200k"
         max-file: "10"
 
+  # etcd-logger:
+    # image: busybox
+    # attach: false
+    # command: tail -F /var/log/etcd/etcd.log
+    # volumes:
+      # - etcd-logs:/var/log/etcd
+    # depends_on:
+      # - delegate-node-a
+      # - delegate-node-b
+    # restart: on-failure
+
   delegate-node-a:
     build:
       context: "../../../.."
@@ -26,6 +38,7 @@ services:
         condition: service_healthy
     command: "config.json"
     volumes:
+      - etcd-logs:/var/log/etcd
       - type: "bind"
         source: "./config-a.json"
         target: "/app/example/minimal/config.json"
@@ -48,6 +61,7 @@ services:
         condition: service_healthy
     command: "config.json"
     volumes:
+      - etcd-logs:/var/log/etcd
       - type: "bind"
         source: "./config-b.json"
         target: "/app/example/minimal/config.json"
@@ -66,3 +80,4 @@ volumes:
   hydra-persist-b:
   node-db:
   node-ipc:
+  etcd-logs:

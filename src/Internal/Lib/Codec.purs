@@ -22,6 +22,7 @@ module HydraSdk.Internal.Lib.Codec
   , rawBytesCodec
   , readOref
   , scriptHashCodec
+  , slotCodec
   , toCaJsonDecodeError
   , txCodec
   , txHashCodec
@@ -53,6 +54,7 @@ import Cardano.Types
   , PublicKey
   , RawBytes(RawBytes)
   , ScriptHash
+  , Slot(Slot)
   , Transaction
   , TransactionHash
   , TransactionInput(TransactionInput)
@@ -285,6 +287,9 @@ readOref str =
 
 scriptHashCodec :: CA.JsonCodec ScriptHash
 scriptHashCodec = asCborCodec "ScriptHash"
+
+slotCodec :: CA.JsonCodec Slot
+slotCodec = wrapIso Slot bigNumCodec
 
 txCodec :: CA.JsonCodec Transaction
 txCodec = asCborCodec "Transaction"

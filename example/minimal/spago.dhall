@@ -2,12 +2,16 @@
 , dependencies =
   [ "aeson"
   , "aff"
+  , "aff-retry"
   , "arrays"
   , "avar"
+  , "bytearrays"
+  , "cardano-provider"
   , "cardano-transaction-lib"
   , "cardano-types"
   , "codec-aeson"
   , "console"
+  , "datetime"
   , "effect"
   , "either"
   , "exceptions"
@@ -15,6 +19,7 @@
   , "hydra-sdk"
   , "maybe"
   , "monad-logger"
+  , "mote"
   , "newtype"
   , "node-buffer"
   , "node-child-process"
@@ -27,11 +32,12 @@
   , "profunctor-lenses"
   , "quickcheck"
   , "refs"
+  , "spec"
   , "strings"
   , "transformers"
   , "tuples"
   , "uint"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "app/**/*.purs" ]
+, sources = [ "src/**/*.purs", "app/**/*.purs", "test/**/*.purs" ]
 }

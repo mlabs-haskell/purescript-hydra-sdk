@@ -2,6 +2,7 @@
 -- | to hydra-node HTTP endpoints.
 module HydraSdk.Internal.NodeApi.Http
   ( commitRequest
+  , getConfirmedSnapshotUtxos
   ) where
 
 import Prelude
@@ -11,14 +12,14 @@ import Data.Either (Either)
 import Data.Maybe (Maybe(Just))
 import Effect.Aff (Aff)
 import HydraSdk.Internal.Http.Error (HttpError)
-import HydraSdk.Internal.Http.Utils (handleResponse, postRequest)
+import HydraSdk.Internal.Http.Utils (getRequest, handleResponse, postRequest)
 import HydraSdk.Internal.Lib.Misc (concatPathSegments)
 import HydraSdk.Internal.Types.CommitRequest
   ( HydraCommitRequest(SimpleCommitRequest, FullCommitRequest)
   , hydraFullCommitRequestCodec
   )
 import HydraSdk.Internal.Types.Tx (HydraTx, hydraTxCodec)
-import HydraSdk.Internal.Types.UtxoMap (hydraUtxoMapCodec)
+import HydraSdk.Internal.Types.UtxoMap (HydraUtxoMap, hydraUtxoMapCodec)
 
 -- | Builds a Hydra Commit transaction ready for submission
 -- | to the L1 network.
@@ -46,3 +47,8 @@ commitRequest baseUrl req =
               CA.encode hydraFullCommitRequestCodec req'
       , headers: mempty
       }
+
+getConfirmedSnapshotUtxos :: String -> Aff (Either HttpError HydraUtxoMap)
+getConfirmedSnapshotUtxos baseUrl =
+  handleResponse hydraUtxoMapCodec <$>
+    getRequest (baseUrl `concatPathSegments` "/snapshot/utxo")
